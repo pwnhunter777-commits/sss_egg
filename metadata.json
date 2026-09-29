@@ -1,0 +1,6 @@
+{
+  "name": "SSS Egg Agency",
+  "description": "Android egg billing, stock management, and sales tracking application for SSS Egg Agency with Bluetooth thermal printing, offline billing, and real-time synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

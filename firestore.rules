@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidDate(dateStr) {
+      return dateStr is string && dateStr.size() == 10 && dateStr.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Test connection check
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // Daily Prices
+    match /daily_prices/{dateId} {
+      allow read: if true;
+      allow create, update: if isValidDate(dateId)
+        && request.resource.data.keys().hasAll(['date', 'pricePerEgg', 'pricePer30Eggs', 'purchaseCost'])
+        && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg > 0
+        && request.resource.data.pricePer30Eggs is number && request.resource.data.pricePer30Eggs > 0
+        && request.resource.data.purchaseCost is number && request.resource.data.purchaseCost >= 0;
+      allow delete: if false;
+    }
+
+    // Daily Stock
+    match /daily_stock/{dateId} {
+      allow read: if true;
+      allow create, update: if isValidDate(dateId)
+        && request.resource.data.keys().hasAll(['date', 'openingStock', 'importedStock', 'eggsSold', 'remainingStock', 'purchaseCost'])
+        && request.resource.data.openingStock is number && request.resource.data.openingStock >= 0
+        && request.resource.data.importedStock is number && request.resource.data.importedStock >= 0
+        && request.resource.data.eggsSold is number && request.resource.data.eggsSold >= 0
+        && request.resource.data.remainingStock is number && request.resource.data.remainingStock >= 0
+        && request.resource.data.purchaseCost is number && request.resource.data.purchaseCost >= 0;
+      allow delete: if false;
+    }
+
+    // Bills
+    match /bills/{billId} {
+      allow read: if true;
+      allow create: if isValidId(billId)
+        && request.resource.data.keys().hasAll([
+          'billId', 'billNumber', 'employeeId', 'employeeName',
+          'date', 'time', 'eggQuantity', 'pricePerEgg',
+          'pricePer30Eggs', 'totalAmount', 'purchaseCostPerEgg', 'profit'
+        ])
+        && request.resource.data.eggQuantity is number && request.resource.data.eggQuantity > 0
+        && request.resource.data.totalAmount is number && request.resource.data.totalAmount >= 0
+        && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg > 0
+        && isValidDate(request.resource.data.date);
+      allow update: if isValidId(billId)
+        && request.resource.data.billId == resource.data.billId
+        && request.resource.data.eggQuantity == resource.data.eggQuantity
+        && request.resource.data.totalAmount == resource.data.totalAmount;
+      allow delete: if false;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create: if isValidId(notificationId)
+        && request.resource.data.keys().hasAll(['notificationId', 'billId', 'billNumber', 'eggQuantity', 'totalAmount', 'date', 'time'])
+        && request.resource.data.eggQuantity is number && request.resource.data.eggQuantity > 0;
+      allow update: if isValidId(notificationId);
+      allow delete: if true;
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if true;
+      allow create, update: if isValidId(settingId)
+        && request.resource.data.keys().hasAll(['agencyName', 'ownerPin', 'employeePin'])
+        && request.resource.data.ownerPin is string && request.resource.data.ownerPin.size() == 4
+        && request.resource.data.employeePin is string && request.resource.data.employeePin.size() == 4;
+      allow delete: if false;
+    }
+  }
+}

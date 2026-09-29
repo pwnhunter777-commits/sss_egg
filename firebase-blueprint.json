@@ -1,0 +1,271 @@
+{
+  "entities": {
+    "DailyPrice": {
+      "title": "DailyPrice",
+      "description": "Daily egg selling prices and purchase cost set by the owner",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "pricePerEgg": {
+          "type": "number",
+          "description": "Selling price for 1 egg in rupees"
+        },
+        "pricePer30Eggs": {
+          "type": "number",
+          "description": "Selling price for 30 eggs tray in rupees"
+        },
+        "purchaseCost": {
+          "type": "number",
+          "description": "Purchase cost per egg paid to supplier in rupees"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last price update"
+        }
+      },
+      "required": ["date", "pricePerEgg", "pricePer30Eggs", "purchaseCost"]
+    },
+    "DailyStock": {
+      "title": "DailyStock",
+      "description": "Stock tracking for a specific business date",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "openingStock": {
+          "type": "number",
+          "description": "Initial stock imported for the day"
+        },
+        "importedStock": {
+          "type": "number",
+          "description": "Total stock imported for the day"
+        },
+        "eggsSold": {
+          "type": "number",
+          "description": "Total eggs sold on this day"
+        },
+        "remainingStock": {
+          "type": "number",
+          "description": "Current remaining stock available"
+        },
+        "purchaseCost": {
+          "type": "number",
+          "description": "Supplier purchase cost per egg"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last stock update"
+        }
+      },
+      "required": ["date", "openingStock", "importedStock", "eggsSold", "remainingStock", "purchaseCost"]
+    },
+    "Bill": {
+      "title": "Bill",
+      "description": "Egg sales bill record created by employee or owner",
+      "type": "object",
+      "properties": {
+        "billId": {
+          "type": "string",
+          "description": "Unique identifier for the bill",
+          "maxLength": 64
+        },
+        "billNumber": {
+          "type": "number",
+          "description": "Sequential bill number for display and printing"
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "Identifier of the staff who billed",
+          "maxLength": 32
+        },
+        "employeeName": {
+          "type": "string",
+          "description": "Display name of employee",
+          "maxLength": 64
+        },
+        "date": {
+          "type": "string",
+          "description": "Billing date YYYY-MM-DD",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "time": {
+          "type": "string",
+          "description": "12-hour formatted time e.g. 12:30 PM",
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of bill creation"
+        },
+        "eggQuantity": {
+          "type": "number",
+          "description": "Total quantity of eggs sold in this bill"
+        },
+        "pricePerEgg": {
+          "type": "number",
+          "description": "Locked unit price at moment of sale"
+        },
+        "pricePer30Eggs": {
+          "type": "number",
+          "description": "Locked 30-egg tray price at moment of sale"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total charged amount in rupees"
+        },
+        "purchaseCostPerEgg": {
+          "type": "number",
+          "description": "Locked purchase cost at moment of sale"
+        },
+        "profit": {
+          "type": "number",
+          "description": "Profit on this bill: totalAmount - (eggQuantity * purchaseCostPerEgg)"
+        },
+        "syncStatus": {
+          "type": "string",
+          "description": "Sync status: synced or pending",
+          "enum": ["synced", "pending"]
+        }
+      },
+      "required": [
+        "billId",
+        "billNumber",
+        "employeeId",
+        "employeeName",
+        "date",
+        "time",
+        "eggQuantity",
+        "pricePerEgg",
+        "pricePer30Eggs",
+        "totalAmount",
+        "purchaseCostPerEgg",
+        "profit"
+      ]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time alert generated when a bill is created",
+      "type": "object",
+      "properties": {
+        "notificationId": {
+          "type": "string",
+          "description": "Unique notification ID",
+          "maxLength": 64
+        },
+        "billId": {
+          "type": "string",
+          "description": "Reference bill ID",
+          "maxLength": 64
+        },
+        "billNumber": {
+          "type": "number",
+          "description": "Bill number"
+        },
+        "employeeName": {
+          "type": "string",
+          "description": "Staff name",
+          "maxLength": 64
+        },
+        "eggQuantity": {
+          "type": "number",
+          "description": "Quantity of eggs sold"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total bill amount"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "time": {
+          "type": "string",
+          "description": "Time string",
+          "maxLength": 20
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Whether owner has seen this notification"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp"
+        }
+      },
+      "required": ["notificationId", "billId", "billNumber", "eggQuantity", "totalAmount", "date", "time"]
+    },
+    "AgencySettings": {
+      "title": "AgencySettings",
+      "description": "Agency profile and credentials configuration",
+      "type": "object",
+      "properties": {
+        "agencyName": {
+          "type": "string",
+          "description": "Name of the egg agency",
+          "maxLength": 100
+        },
+        "ownerPin": {
+          "type": "string",
+          "description": "Owner 4-digit PIN",
+          "pattern": "^[0-9]{4}$"
+        },
+        "employeePin": {
+          "type": "string",
+          "description": "Employee 4-digit PIN",
+          "pattern": "^[0-9]{4}$"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number",
+          "maxLength": 20
+        },
+        "address": {
+          "type": "string",
+          "description": "Agency physical address",
+          "maxLength": 200
+        }
+      },
+      "required": ["agencyName", "ownerPin", "employeePin"]
+    }
+  },
+  "firestore": {
+    "/daily_prices/{date}": {
+      "schema": {
+        "$ref": "#/entities/DailyPrice"
+      },
+      "description": "Collection of daily prices keyed by YYYY-MM-DD"
+    },
+    "/daily_stock/{date}": {
+      "schema": {
+        "$ref": "#/entities/DailyStock"
+      },
+      "description": "Collection of daily stock keyed by YYYY-MM-DD"
+    },
+    "/bills/{billId}": {
+      "schema": {
+        "$ref": "#/entities/Bill"
+      },
+      "description": "Collection of individual bills created by employee or owner"
+    },
+    "/notifications/{notificationId}": {
+      "schema": {
+        "$ref": "#/entities/Notification"
+      },
+      "description": "Real-time notifications sent to owner on bill creation"
+    },
+    "/settings/{settingId}": {
+      "schema": {
+        "$ref": "#/entities/AgencySettings"
+      },
+      "description": "Agency configuration and security PINs"
+    }
+  }
+}
