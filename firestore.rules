@@ -28,7 +28,7 @@ service cloud.firestore {
         && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg > 0
         && request.resource.data.pricePer30Eggs is number && request.resource.data.pricePer30Eggs > 0
         && request.resource.data.purchaseCost is number && request.resource.data.purchaseCost >= 0;
-      allow delete: if false;
+      allow delete: if isValidDate(dateId);
     }
 
     // Daily Stock
@@ -41,7 +41,7 @@ service cloud.firestore {
         && request.resource.data.eggsSold is number && request.resource.data.eggsSold >= 0
         && request.resource.data.remainingStock is number && request.resource.data.remainingStock >= 0
         && request.resource.data.purchaseCost is number && request.resource.data.purchaseCost >= 0;
-      allow delete: if false;
+      allow delete: if isValidDate(dateId);
     }
 
     // Bills
@@ -61,7 +61,7 @@ service cloud.firestore {
         && request.resource.data.billId == resource.data.billId
         && request.resource.data.eggQuantity == resource.data.eggQuantity
         && request.resource.data.totalAmount == resource.data.totalAmount;
-      allow delete: if false;
+      allow delete: if isValidId(billId);
     }
 
     // Notifications
@@ -71,7 +71,7 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['notificationId', 'billId', 'billNumber', 'eggQuantity', 'totalAmount', 'date', 'time'])
         && request.resource.data.eggQuantity is number && request.resource.data.eggQuantity > 0;
       allow update: if isValidId(notificationId);
-      allow delete: if true;
+      allow delete: if isValidId(notificationId);
     }
 
     // Settings

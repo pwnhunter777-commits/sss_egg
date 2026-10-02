@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserRole, AgencySettings } from '../types';
 import { playPrintClickSound } from '../lib/soundNotification';
-import { Shield, UserCheck, Delete, KeyRound, AlertTriangle, Egg } from 'lucide-react';
+import { Delete, KeyRound, AlertTriangle, Egg } from 'lucide-react';
 
 interface Props {
   settings: AgencySettings;
@@ -69,66 +69,57 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
     setErrorMsg(null);
   };
 
-  const quickFillDefault = () => {
-    const defaultPin = selectedRole === 'owner' ? settings.ownerPin || '8888' : settings.employeePin || '1234';
-    setPin(defaultPin);
-    verifyPin(defaultPin);
-  };
-
   return (
-    <div className="flex-1 flex flex-col justify-between p-6 bg-gradient-to-b from-blue-900 via-blue-800 to-slate-900 text-white select-none">
+    <div className="flex-1 flex flex-col justify-between p-6 md:p-8 bg-gradient-to-b from-blue-900 via-blue-800 to-slate-900 text-white select-none min-h-[90vh]">
       {/* Top Branding Section */}
-      <div className="text-center pt-2 space-y-2">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl mb-1">
-          <Egg className="w-10 h-10 text-amber-300 drop-shadow" />
+      <div className="text-center pt-4 space-y-3">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl mb-1">
+          <Egg className="w-12 h-12 text-amber-300 drop-shadow-md" />
         </div>
         <div>
-          <h1 className="text-2xl font-black tracking-tight uppercase text-white drop-shadow-sm">
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight uppercase text-white drop-shadow-md">
             {settings.agencyName || 'SSS EGG AGENCY'}
           </h1>
-          <p className="text-xs text-blue-200 font-medium">Billing & Stock Management System</p>
         </div>
       </div>
 
       {/* Role Selection Tabs */}
-      <div className="bg-blue-950/70 p-1.5 rounded-2xl border border-white/10 backdrop-blur-sm grid grid-cols-2 gap-1.5 shadow-inner">
+      <div className="bg-blue-950/80 p-2 rounded-2xl border border-white/15 backdrop-blur-md grid grid-cols-2 gap-2 shadow-2xl max-w-sm mx-auto w-full">
         <button
           type="button"
           onClick={() => handleRoleSwitch('owner')}
-          className={`py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+          className={`py-3.5 px-6 rounded-xl font-black text-base md:text-lg flex items-center justify-center transition-all ${
             selectedRole === 'owner'
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-[1.02]'
-              : 'text-blue-200 hover:text-white hover:bg-white/5'
+              ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-[1.03]'
+              : 'text-blue-200 hover:text-white hover:bg-white/10'
           }`}
         >
-          <Shield className="w-4 h-4 text-amber-300" />
           <span>OWNER</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleRoleSwitch('employee')}
-          className={`py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+          className={`py-3.5 px-6 rounded-xl font-black text-base md:text-lg flex items-center justify-center transition-all ${
             selectedRole === 'employee'
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-[1.02]'
-              : 'text-blue-200 hover:text-white hover:bg-white/5'
+              ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-[1.03]'
+              : 'text-blue-200 hover:text-white hover:bg-white/10'
           }`}
         >
-          <UserCheck className="w-4 h-4 text-emerald-300" />
           <span>EMPLOYEE</span>
         </button>
       </div>
 
       {/* PIN Dots Area */}
-      <div className="text-center space-y-3 py-2">
-        <div className="flex items-center justify-center gap-1.5 text-xs text-blue-200 font-medium">
-          <KeyRound className="w-3.5 h-3.5" />
+      <div className="text-center space-y-4 py-3">
+        <div className="flex items-center justify-center gap-2 text-sm md:text-base text-blue-100 font-extrabold">
+          <KeyRound className="w-4 h-4 text-amber-400" />
           <span>Enter {selectedRole === 'owner' ? 'Owner' : 'Employee'} 4-Digit PIN</span>
         </div>
 
         {/* 4 PIN Dots */}
         <div
-          className={`flex justify-center items-center gap-5 transition-transform duration-100 ${
+          className={`flex justify-center items-center gap-6 transition-transform duration-100 ${
             isShaking ? 'translate-x-2 -translate-x-2' : ''
           }`}
         >
@@ -137,36 +128,32 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
             return (
               <div
                 key={index}
-                className={`w-4 h-4 rounded-full transition-all duration-200 ${
+                className={`w-5 h-5 rounded-full transition-all duration-200 ${
                   isFilled
-                    ? 'bg-amber-400 scale-125 shadow-[0_0_12px_rgba(251,191,36,0.8)]'
-                    : 'bg-white/20 border-2 border-white/40'
+                    ? 'bg-amber-400 scale-125 shadow-[0_0_16px_rgba(251,191,36,0.9)]'
+                    : 'bg-white/20 border-2 border-white/50'
                 }`}
               />
             );
           })}
         </div>
 
-        {errorMsg ? (
-          <div className="text-xs text-rose-300 font-semibold flex items-center justify-center gap-1.5 bg-rose-500/20 py-1.5 px-3 rounded-lg border border-rose-500/30 animate-in fade-in">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+        {errorMsg && (
+          <div className="text-sm text-rose-300 font-bold flex items-center justify-center gap-2 bg-rose-500/25 py-2 px-4 rounded-xl border border-rose-500/40 animate-in fade-in max-w-xs mx-auto">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{errorMsg}</span>
-          </div>
-        ) : (
-          <div className="text-[11px] text-blue-300/80">
-            {selectedRole === 'owner' ? 'Full administrative access' : 'Fast billing & printing access only'}
           </div>
         )}
       </div>
 
       {/* Numeric Keypad */}
-      <div className="grid grid-cols-3 gap-2.5 max-w-xs mx-auto w-full">
+      <div className="grid grid-cols-3 gap-3 md:gap-4 max-w-sm mx-auto w-full pb-4">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
           <button
             key={digit}
             type="button"
             onClick={() => handleDigit(digit)}
-            className="h-14 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-bold text-2xl flex items-center justify-center backdrop-blur-sm border border-white/10 transition-all active:scale-95 shadow-sm"
+            className="h-16 md:h-20 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-black text-3xl md:text-4xl flex items-center justify-center backdrop-blur-md border border-white/15 transition-all active:scale-95 shadow-md"
           >
             {digit}
           </button>
@@ -175,7 +162,7 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
         <button
           type="button"
           onClick={handleClear}
-          className="h-14 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/25 text-blue-300 font-semibold text-xs flex items-center justify-center border border-white/5 active:scale-95 transition-all"
+          className="h-16 md:h-20 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/25 text-blue-200 font-black text-sm md:text-base tracking-wider flex items-center justify-center border border-white/10 active:scale-95 transition-all"
         >
           CLEAR
         </button>
@@ -183,7 +170,7 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
         <button
           type="button"
           onClick={() => handleDigit('0')}
-          className="h-14 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-bold text-2xl flex items-center justify-center backdrop-blur-sm border border-white/10 active:scale-95 transition-all shadow-sm"
+          className="h-16 md:h-20 rounded-2xl bg-white/10 hover:bg-white/20 active:bg-white/30 text-white font-black text-3xl md:text-4xl flex items-center justify-center backdrop-blur-md border border-white/15 active:scale-95 transition-all shadow-md"
         >
           0
         </button>
@@ -191,24 +178,9 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
         <button
           type="button"
           onClick={handleBackspace}
-          className="h-14 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/25 text-rose-300 flex items-center justify-center border border-white/5 active:scale-95 transition-all"
+          className="h-16 md:h-20 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/25 text-rose-300 flex items-center justify-center border border-white/10 active:scale-95 transition-all"
         >
-          <Delete className="w-6 h-6" />
-        </button>
-      </div>
-
-      {/* Quick Testing PIN Helper Hint */}
-      <div className="pt-2 text-center">
-        <button
-          type="button"
-          onClick={quickFillDefault}
-          className="text-[11px] text-blue-300/90 hover:text-white bg-blue-950/60 px-3 py-1.5 rounded-full border border-blue-400/20 transition-all"
-        >
-          🔑 Quick Login: Tap to enter default PIN (
-          <span className="font-mono text-amber-300 font-bold">
-            {selectedRole === 'owner' ? settings.ownerPin || '8888' : settings.employeePin || '1234'}
-          </span>
-          )
+          <Delete className="w-7 h-7 md:w-8 md:h-8" />
         </button>
       </div>
     </div>

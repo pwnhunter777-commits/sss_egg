@@ -3,9 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { UserRole, AgencySettings, PrinterDevice } from './types';
-import { getLocalSettings, getLocalPrinter, DEFAULT_SETTINGS, DEFAULT_PRINTER } from './lib/offlineStorage';
+import {
+  getLocalSettings,
+  getLocalPrinter,
+  DEFAULT_SETTINGS,
+  DEFAULT_PRINTER,
+  getLocalActiveSession,
+  setLocalActiveSession,
+  clearLocalActiveSession,
+  getLastActiveDate,
+  setLastActiveDate,
+  resetAllLocalData,
+  getTodayDateString,
+} from './lib/offlineStorage';
 import { EggAgencyService } from './services/eggAgencyService';
 import { LoginScreen } from './components/LoginScreen';
 import { OwnerDashboard } from './components/OwnerDashboard';
@@ -17,12 +29,30 @@ export default function App() {
   const [printer, setPrinter] = useState<PrinterDevice>(DEFAULT_PRINTER);
   const [isInitializing, setIsInitializing] = useState(true);
 
-  // Load initial local settings & remote sync on startup
+  // Load initial local settings, active 1-day session, & remote sync on startup
   useEffect(() => {
     const localS = getLocalSettings();
     const localP = getLocalPrinter();
     setSettings(localS);
     setPrinter(localP);
+
+    const today = getTodayDateString();
+    const lastActive = getLastActiveDate();
+
+    if (lastActive && lastActive !== today) {
+      // New day started! Purge all previous days' data from Firestore and local storage
+      resetAllLocalData();
+      EggAgencyService.purgePastDaysData(today).catch(() => {});
+      setLastActiveDate(today);
+      setUserRole(null);
+    } else {
+      setLastActiveDate(today);
+      // Check for existing valid 1-day session
+      const activeSession = getLocalActiveSession();
+      if (activeSession) {
+        setUserRole(activeSession.role);
+      }
+    }
 
     EggAgencyService.getSettings()
       .then((remoteSettings) => {
@@ -35,16 +65,53 @@ export default function App() {
     EggAgencyService.syncPendingBills().catch(() => {});
   }, []);
 
-  const handleLoginSuccess = (role: UserRole) => {
-    setUserRole(role);
-  };
+  // Automatic daily restart & database purge check:
+  // If the date changes (e.g. overnight or midnight rollover), the app clears past data and resets
+  useEffect(() => {
+    const verifyDailyLifecycle = () => {
+      const today = getTodayDateString();
+      const lastActive = getLastActiveDate();
 
-  const handleLogout = () => {
+      if (lastActive && lastActive !== today) {
+        // Date changed while open! Purge past data, reset local state, and prompt login
+        resetAllLocalData();
+        EggAgencyService.purgePastDaysData(today).catch(() => {});
+        setLastActiveDate(today);
+        setUserRole(null);
+        return;
+      }
+
+      const activeSession = getLocalActiveSession();
+      if (!activeSession && userRole !== null) {
+        setUserRole(null);
+      }
+    };
+
+    const interval = setInterval(verifyDailyLifecycle, 20000); // Check every 20 seconds
+    window.addEventListener('focus', verifyDailyLifecycle);
+    document.addEventListener('visibilitychange', verifyDailyLifecycle);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', verifyDailyLifecycle);
+      document.removeEventListener('visibilitychange', verifyDailyLifecycle);
+    };
+  }, [userRole]);
+
+  const handleLoginSuccess = useCallback((role: UserRole) => {
+    if (role) {
+      setLocalActiveSession(role);
+    }
+    setUserRole(role);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    clearLocalActiveSession();
     setUserRole(null);
-  };
+  }, []);
 
   return (
-    <main className="min-h-screen w-full bg-slate-100 flex flex-col max-w-lg mx-auto">
+    <main className="min-h-screen w-full bg-slate-100 flex flex-col max-w-2xl mx-auto shadow-2xl">
       {isInitializing ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 bg-blue-900 text-white space-y-3">
           <div className="w-12 h-12 border-4 border-amber-300 border-t-transparent rounded-full animate-spin" />

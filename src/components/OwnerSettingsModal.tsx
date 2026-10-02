@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AgencySettings } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
-import { Settings, Check, X, Shield, KeyRound, Phone, MapPin, Store, RefreshCw } from 'lucide-react';
+import { resetAllLocalData, getTodayDateString, setLastActiveDate } from '../lib/offlineStorage';
+import { Settings, Check, X, Shield, KeyRound, Phone, MapPin, Store, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 
 interface Props {
   settings: AgencySettings;
@@ -22,8 +23,26 @@ export const OwnerSettingsModal: React.FC<Props> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleManualDailyReset = async () => {
+    if (!window.confirm("Are you sure you want to wipe all records and restart the database fresh for today?")) {
+      return;
+    }
+    setIsResetting(true);
+    setStatusMsg('Clearing database and restarting app...');
+    try {
+      await EggAgencyService.clearAllDatabaseData();
+      resetAllLocalData();
+      setLastActiveDate(getTodayDateString());
+      window.location.reload();
+    } catch (err: any) {
+      setErrorMsg('Failed to reset: ' + err.message);
+      setIsResetting(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,6 +205,26 @@ export const OwnerSettingsModal: React.FC<Props> = ({
             <p className="text-[10px] text-slate-500 leading-tight">
               All transactions are automatically preserved offline and mirrored to Firebase Cloud.
             </p>
+          </div>
+
+          {/* Daily Reset & Database Purge */}
+          <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-xl space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span>Daily Reset & Clean Slate</span>
+            </div>
+            <p className="text-[10px] text-rose-700 leading-tight">
+              The app automatically resets every day at midnight and clears past database records. You can also manually trigger a clean restart right now:
+            </p>
+            <button
+              type="button"
+              onClick={handleManualDailyReset}
+              disabled={isResetting}
+              className="w-full py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-98 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isResetting ? 'Resetting Database...' : 'Clear All Data & Restart Fresh'}</span>
+            </button>
           </div>
 
           {statusMsg && (

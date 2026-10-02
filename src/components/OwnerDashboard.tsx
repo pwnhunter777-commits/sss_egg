@@ -201,16 +201,6 @@ export const OwnerDashboard: React.FC<Props> = ({
               )}
             </button>
 
-            {/* Printer Button */}
-            <button
-              type="button"
-              onClick={() => setShowPrinterModal(true)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-              title="Bluetooth Printer"
-            >
-              <Printer className="w-4 h-4" />
-            </button>
-
             {/* Settings Button */}
             <button
               type="button"
@@ -259,15 +249,15 @@ export const OwnerDashboard: React.FC<Props> = ({
       </header>
 
       {/* Quick Action Navigation Bar */}
-      <nav aria-label="Owner Actions" className="bg-white border-b border-slate-200 px-3 py-2 flex items-center justify-between shrink-0 shadow-xs">
-        <div className="flex gap-1.5">
+      <nav aria-label="Owner Actions" className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-xs">
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`py-1.5 px-3 rounded-xl font-bold text-xs transition-all ${
+            className={`py-2 px-4 rounded-xl font-black text-sm md:text-base transition-all ${
               activeTab === 'overview'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100 font-bold'
             }`}
           >
             Overview
@@ -275,10 +265,10 @@ export const OwnerDashboard: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setActiveTab('bills')}
-            className={`py-1.5 px-3 rounded-xl font-bold text-xs transition-all ${
+            className={`py-2 px-4 rounded-xl font-black text-sm md:text-base transition-all ${
               activeTab === 'bills'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100 font-bold'
             }`}
           >
             All Bills ({bills.length})
@@ -286,46 +276,46 @@ export const OwnerDashboard: React.FC<Props> = ({
         </div>
 
         {/* Date Selector */}
-        <div className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-xl border border-slate-200 text-xs">
-          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+        <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300 text-xs md:text-sm font-black">
+          <Calendar className="w-4 h-4 text-blue-600" />
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent text-slate-800 font-semibold text-xs focus:outline-hidden"
+            className="bg-transparent text-slate-900 font-black text-xs md:text-sm focus:outline-hidden cursor-pointer"
           />
         </div>
       </nav>
 
       {/* Notifications Drawer */}
       {showNotificationsDrawer && (
-        <div className="bg-amber-50 border-b border-amber-200 p-3 space-y-2 max-h-48 overflow-y-auto no-scrollbar shrink-0">
-          <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+        <div className="bg-amber-50 border-b border-amber-200 p-4 space-y-2.5 max-h-56 overflow-y-auto no-scrollbar shrink-0">
+          <div className="flex items-center justify-between text-sm font-black text-amber-950">
             <span>Recent Bill Notifications</span>
             <button
               onClick={() => setShowNotificationsDrawer(false)}
-              className="text-slate-400 hover:text-slate-600"
+              className="text-slate-400 hover:text-slate-600 p-1 font-bold"
             >
               ✕
             </button>
           </div>
           {notifications.length === 0 ? (
-            <p className="text-[11px] text-amber-800">No notifications yet today.</p>
+            <p className="text-xs font-bold text-amber-800">No notifications yet today.</p>
           ) : (
             notifications.map((n) => (
               <div
                 key={n.notificationId}
-                className="bg-white p-2 rounded-lg border border-amber-200 text-xs flex items-center justify-between shadow-2xs"
+                className="bg-white p-3 rounded-xl border border-amber-200 text-sm flex items-center justify-between shadow-xs"
               >
                 <div>
-                  <div className="font-bold text-slate-900">
+                  <div className="font-black text-slate-900">
                     Bill #{n.billNumber} • {n.eggQuantity} Eggs
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-xs font-medium text-slate-500">
                     {n.time} • Staff: {n.employeeName}
                   </div>
                 </div>
-                <div className="font-extrabold text-blue-700">{formatIndianCurrency(n.totalAmount)}</div>
+                <div className="font-black text-base text-blue-700">{formatIndianCurrency(n.totalAmount)}</div>
               </div>
             ))
           )}
@@ -334,55 +324,55 @@ export const OwnerDashboard: React.FC<Props> = ({
 
       {/* MAIN TAB CONTENT */}
       {activeTab === 'overview' && (
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
           {/* Quick Management Shortcuts Row */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setShowPriceModal(true)}
-              className="bg-white hover:bg-blue-50/50 p-3 rounded-2xl border border-blue-200 shadow-2xs flex items-center gap-2.5 active:scale-98 transition-all text-left"
+              className="bg-white hover:bg-blue-50/60 p-4 rounded-3xl border-2 border-blue-200 shadow-xs flex items-center gap-3 active:scale-98 transition-all text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-2xl shadow-md">
                 ₹
               </div>
               <div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase">Daily Price</div>
-                <div className="text-xs font-black text-slate-800">Set Egg Price</div>
+                <div className="text-sm md:text-base font-black text-slate-900">Set Egg Price</div>
+                <div className="text-xs font-bold text-slate-500">₹{todayPrice?.pricePerEgg ?? 3} / egg</div>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => setShowStockModal(true)}
-              className="bg-white hover:bg-emerald-50/50 p-3 rounded-2xl border border-emerald-200 shadow-2xs flex items-center gap-2.5 active:scale-98 transition-all text-left"
+              className="bg-white hover:bg-emerald-50/60 p-4 rounded-3xl border-2 border-emerald-200 shadow-xs flex items-center gap-3 active:scale-98 transition-all text-left"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
-                <PackagePlus className="w-5 h-5" />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                <PackagePlus className="w-6 h-6" />
               </div>
               <div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase">Daily Stock</div>
-                <div className="text-xs font-black text-slate-800">Import Stock</div>
+                <div className="text-sm md:text-base font-black text-slate-900">Import Stock</div>
+                <div className="text-xs font-bold text-slate-500">{remainingStock} in stock</div>
               </div>
             </button>
           </div>
 
           {/* LARGE SUMMARY CARDS REQUIRED BY SPECIFICATION */}
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {/* Card 1: TODAY'S SALES */}
-            <div className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-2xl p-4 text-white shadow-md shadow-blue-500/15 relative overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-3xl p-5 md:p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-bold text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-amber-300" />
+                  <div className="text-xs md:text-sm font-black text-blue-200 uppercase tracking-wider flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-amber-300" />
                     <span>TODAY'S TOTAL SALES</span>
                   </div>
-                  <div className="text-3xl font-black mt-1 font-mono tracking-tight text-white drop-shadow-xs">
+                  <div className="text-4xl md:text-5xl font-black mt-2 font-mono tracking-tight text-white drop-shadow-md">
                     {formatIndianCurrency(totalSales)}
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-[10px] bg-blue-900/60 px-2.5 py-1 rounded-full text-blue-100 font-medium">
+                  <span className="text-xs md:text-sm bg-blue-900/80 px-3.5 py-1.5 rounded-full text-blue-100 font-black border border-blue-400/30">
                     1 Egg = ₹{todayPrice?.pricePerEgg ?? 3}
                   </span>
                 </div>
@@ -390,64 +380,53 @@ export const OwnerDashboard: React.FC<Props> = ({
             </div>
 
             {/* Grid 2 Columns: EGGS SOLD & REMAINING STOCK */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-3">
               {/* Card 2: EGGS SOLD */}
-              <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Egg className="w-3.5 h-3.5 text-blue-600" />
+              <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Egg className="w-4 h-4 text-blue-600" />
                   <span>EGGS SOLD</span>
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+                <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
                   {totalEggsSold.toLocaleString('en-IN')}{' '}
-                  <span className="text-xs font-medium text-slate-500">eggs</span>
+                  <span className="text-sm font-bold text-slate-500">eggs</span>
                 </div>
               </div>
 
               {/* Card 3: REMAINING STOCK */}
-              <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <Package className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>REMAINING STOCK</span>
+              <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-emerald-600" />
+                  <span>REMAINING</span>
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+                <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
                   {remainingStock.toLocaleString('en-IN')}{' '}
-                  <span className="text-xs font-medium text-slate-500">eggs</span>
-                </div>
-                <div
-                  className={`text-[10px] font-bold inline-block px-1.5 py-0.5 rounded mt-0.5 ${
-                    remainingStock > 500
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : remainingStock > 0
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-rose-100 text-rose-800'
-                  }`}
-                >
-                  {remainingStock > 500 ? 'Healthy Stock' : remainingStock > 0 ? 'Low Stock' : 'Out of Stock'}
+                  <span className="text-sm font-bold text-slate-500">eggs</span>
                 </div>
               </div>
             </div>
 
             {/* Grid 2 Columns: TOTAL BILLS & PROFIT */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 gap-3">
               {/* Card 4: TOTAL BILLS */}
-              <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+              <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-indigo-600" />
                   <span>TOTAL BILLS</span>
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+                <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
                   {totalBillsCount}{' '}
-                  <span className="text-xs font-medium text-slate-500">bills</span>
+                  <span className="text-sm font-bold text-slate-500">bills</span>
                 </div>
               </div>
 
               {/* Card 5: TODAY'S PROFIT */}
-              <div className="bg-emerald-50 rounded-2xl p-3.5 border border-emerald-200 shadow-2xs">
-                <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <div className="bg-emerald-50 rounded-3xl p-4 md:p-5 border-2 border-emerald-200 shadow-xs">
+                <div className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
                   <span>PROFIT</span>
                 </div>
-                <div className="text-2xl font-black text-emerald-900 font-mono mt-1">
+                <div className="text-3xl md:text-4xl font-black text-emerald-950 font-mono mt-1.5">
                   {formatIndianCurrency(totalProfit)}
                 </div>
               </div>
@@ -455,31 +434,28 @@ export const OwnerDashboard: React.FC<Props> = ({
           </div>
 
           {/* Employee-wise Sales Card (Only ONE employee) */}
-          <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-2xs space-y-2">
+          <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
-                <User className="w-4 h-4 text-blue-600" />
+              <div className="text-sm font-black text-slate-800 uppercase flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
                 <span>Employee-wise Sales</span>
               </div>
-              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                Single Staff
-              </span>
             </div>
 
-            <div className="p-3 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="font-bold text-xs text-blue-950 flex items-center gap-1.5">
+            <div className="p-4 bg-blue-50/80 border-2 border-blue-100 rounded-2xl flex items-center justify-between">
+              <div className="space-y-1">
+                <div className="font-black text-sm md:text-base text-blue-950 flex items-center gap-2">
                   <span>Staff Ramesh</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 </div>
-                <div className="text-[11px] text-slate-600">
+                <div className="text-xs md:text-sm font-bold text-slate-600">
                   {totalBillsCount} Bills • {totalEggsSold} Eggs Sold
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-[10px] font-semibold text-slate-500 uppercase">Sales Volume</div>
-                <div className="text-sm font-black text-blue-800 font-mono">
+                <div className="text-xs font-black text-slate-500 uppercase tracking-wider">Sales Volume</div>
+                <div className="text-xl md:text-2xl font-black text-blue-800 font-mono">
                   {formatIndianCurrency(totalSales)}
                 </div>
               </div>

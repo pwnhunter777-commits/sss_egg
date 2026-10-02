@@ -7,6 +7,8 @@ const STORAGE_KEYS = {
   PRINTER: 'sss_printer_v1',
   NOTIFICATIONS: 'sss_notifications_v1',
   LAST_BILL_NUMBER: 'sss_last_bill_number_v1',
+  ACTIVE_SESSION: 'sss_active_session_v1',
+  LAST_ACTIVE_DATE: 'sss_last_active_date_v1',
 };
 
 export const DEFAULT_SETTINGS: AgencySettings = {
@@ -250,3 +252,89 @@ export function markNotificationsAsRead(): void {
     localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(list));
   } catch {}
 }
+
+// Daily Active Session (Persists for the calendar day; auto-resets when date changes)
+export interface ActiveSession {
+  role: 'owner' | 'employee';
+  date: string;
+  loginTimestamp: number;
+}
+
+export function getLocalActiveSession(): ActiveSession | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
+    if (!raw) return null;
+    const session: ActiveSession = JSON.parse(raw);
+    const today = getTodayDateString();
+    // Daily expiry: if the session date is not today, automatically expire and clear it
+    if (session.date !== today) {
+      clearLocalActiveSession();
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+export function setLocalActiveSession(role: 'owner' | 'employee'): void {
+  try {
+    const session: ActiveSession = {
+      role,
+      date: getTodayDateString(),
+      loginTimestamp: Date.now(),
+    };
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_SESSION, JSON.stringify(session));
+  } catch (e) {
+    console.error('Failed to store active session', e);
+  }
+}
+
+export function clearLocalActiveSession(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+  } catch (e) {
+    console.error('Failed to clear active session', e);
+  }
+}
+
+// Daily Data Lifecycle
+export function getLastActiveDate(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.LAST_ACTIVE_DATE);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastActiveDate(date: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.LAST_ACTIVE_DATE, date);
+  } catch (e) {
+    console.error('Failed to set last active date', e);
+  }
+}
+
+export function resetAllLocalData(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.BILLS);
+    localStorage.removeItem(STORAGE_KEYS.PENDING_SYNC);
+    localStorage.removeItem(STORAGE_KEYS.NOTIFICATIONS);
+    localStorage.removeItem(STORAGE_KEYS.LAST_BILL_NUMBER);
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_SESSION);
+
+    // Clean up daily price & stock caches
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('sss_price_') || key.startsWith('sss_stock_'))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch (e) {
+    console.error('Failed to reset all local data', e);
+  }
+}
+
+

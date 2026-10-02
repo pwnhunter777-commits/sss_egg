@@ -1,7 +1,10 @@
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
+  deleteDoc,
+  writeBatch,
   collection,
   query,
   where,
@@ -90,7 +93,7 @@ export const EggAgencyService = {
       const docRef = doc(db, 'daily_prices', price.date);
       await setDoc(docRef, price, { merge: true });
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `daily_prices/${price.date}`);
+      console.warn('Could not sync daily price immediately to cloud (offline active):', err);
     }
   },
 
@@ -154,7 +157,7 @@ export const EggAgencyService = {
       const docRef = doc(db, 'daily_stock', stock.date);
       await setDoc(docRef, stock, { merge: true });
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `daily_stock/${stock.date}`);
+      console.warn('Could not sync daily stock immediately to cloud (offline active):', err);
     }
   },
 
@@ -476,7 +479,108 @@ export const EggAgencyService = {
     try {
       await setDoc(doc(db, 'settings', 'agency_config'), settings, { merge: true });
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, 'settings/agency_config');
+      console.warn('Could not sync settings to cloud immediately (offline active):', err);
+    }
+  },
+
+  /**
+   * Cleans up all past days' data from Firestore (bills, stock, price, notifications)
+   * so every calendar day operates on a 100% clean, fresh slate.
+   */
+  async purgePastDaysData(currentDate: string = getTodayDateString()): Promise<void> {
+    try {
+      // 1. Purge past bills
+      const billsSnap = await getDocs(collection(db, 'bills'));
+      const billBatch = writeBatch(db);
+      let billsToDelete = 0;
+      billsSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.date !== currentDate) {
+          billBatch.delete(d.ref);
+          billsToDelete++;
+        }
+      });
+      if (billsToDelete > 0) {
+        await billBatch.commit();
+      }
+
+      // 2. Purge past stock
+      const stockSnap = await getDocs(collection(db, 'daily_stock'));
+      const stockBatch = writeBatch(db);
+      let stockToDelete = 0;
+      stockSnap.docs.forEach((d) => {
+        if (d.id !== currentDate) {
+          stockBatch.delete(d.ref);
+          stockToDelete++;
+        }
+      });
+      if (stockToDelete > 0) {
+        await stockBatch.commit();
+      }
+
+      // 3. Purge past prices
+      const priceSnap = await getDocs(collection(db, 'daily_prices'));
+      const priceBatch = writeBatch(db);
+      let pricesToDelete = 0;
+      priceSnap.docs.forEach((d) => {
+        if (d.id !== currentDate) {
+          priceBatch.delete(d.ref);
+          pricesToDelete++;
+        }
+      });
+      if (pricesToDelete > 0) {
+        await priceBatch.commit();
+      }
+
+      // 4. Purge past notifications
+      const notifSnap = await getDocs(collection(db, 'notifications'));
+      const notifBatch = writeBatch(db);
+      let notifsToDelete = 0;
+      notifSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.date !== currentDate) {
+          notifBatch.delete(d.ref);
+          notifsToDelete++;
+        }
+      });
+      if (notifsToDelete > 0) {
+        await notifBatch.commit();
+      }
+    } catch (err) {
+      console.warn('Could not complete past days Firestore purge (offline or network):', err);
+    }
+  },
+
+  /**
+   * Completely clears ALL data from Firestore (Hard Reset / Fresh Start)
+   */
+  async clearAllDatabaseData(): Promise<void> {
+    try {
+      // Delete all bills
+      const billsSnap = await getDocs(collection(db, 'bills'));
+      const bBatch = writeBatch(db);
+      billsSnap.docs.forEach((d) => bBatch.delete(d.ref));
+      if (billsSnap.docs.length > 0) await bBatch.commit();
+
+      // Delete all stock
+      const stockSnap = await getDocs(collection(db, 'daily_stock'));
+      const sBatch = writeBatch(db);
+      stockSnap.docs.forEach((d) => sBatch.delete(d.ref));
+      if (stockSnap.docs.length > 0) await sBatch.commit();
+
+      // Delete all prices
+      const priceSnap = await getDocs(collection(db, 'daily_prices'));
+      const pBatch = writeBatch(db);
+      priceSnap.docs.forEach((d) => pBatch.delete(d.ref));
+      if (priceSnap.docs.length > 0) await pBatch.commit();
+
+      // Delete all notifications
+      const notifSnap = await getDocs(collection(db, 'notifications'));
+      const nBatch = writeBatch(db);
+      notifSnap.docs.forEach((d) => nBatch.delete(d.ref));
+      if (notifSnap.docs.length > 0) await nBatch.commit();
+    } catch (err) {
+      console.warn('Could not completely clear all remote data:', err);
     }
   },
 };

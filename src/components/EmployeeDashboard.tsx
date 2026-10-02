@@ -316,53 +316,53 @@ export const EmployeeDashboard: React.FC<Props> = ({
       </header>
 
       {/* Navigation Tabs */}
-      <nav aria-label="Employee Navigation" className="bg-white border-b border-slate-200 px-3 py-1.5 flex gap-2 shrink-0 shadow-xs">
+      <nav aria-label="Employee Navigation" className="bg-white border-b border-slate-200 px-4 py-2 flex gap-2 shrink-0 shadow-xs">
         <button
           type="button"
           onClick={() => setActiveTab('billing')}
-          className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-3 px-4 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all ${
             activeTab === 'billing'
-              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+              : 'text-slate-600 hover:bg-slate-100 font-bold'
           }`}
         >
-          <PlusCircle className="w-4 h-4" />
+          <PlusCircle className="w-5 h-5" />
           <span>Create Bill</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('history')}
-          className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-3 px-4 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all ${
             activeTab === 'history'
-              ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/30'
-              : 'text-slate-600 hover:bg-slate-100'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+              : 'text-slate-600 hover:bg-slate-100 font-bold'
           }`}
         >
-          <History className="w-4 h-4" />
+          <History className="w-5 h-5" />
           <span>Bill History ({bills.length})</span>
         </button>
       </nav>
 
       {/* TAB CONTENT: BILLING SCREEN */}
       {activeTab === 'billing' && (
-        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
+        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
           {/* Read-Only Current Price Banner */}
-          <div className="bg-white rounded-2xl p-3 border border-blue-100 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+          <div className="bg-white rounded-3xl p-4 border-2 border-blue-100 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-black text-2xl">
                 🥚
               </div>
               <div>
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
                   Today's Price (Set by Owner)
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-extrabold text-blue-900">
-                    ₹{pricePerEgg} <span className="text-xs font-normal text-slate-500">/ egg</span>
+                <div className="flex items-center gap-2.5 mt-0.5">
+                  <span className="text-xl md:text-2xl font-black text-blue-900 font-mono">
+                    ₹{pricePerEgg} <span className="text-xs font-bold text-slate-500">/ egg</span>
                   </span>
-                  <span className="text-xs text-slate-400">•</span>
-                  <span className="text-xs font-bold text-slate-700">
+                  <span className="text-slate-300 font-bold">•</span>
+                  <span className="text-sm md:text-base font-black text-slate-800 font-mono">
                     30 Eggs = ₹{pricePer30Eggs}
                   </span>
                 </div>
@@ -371,16 +371,16 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
             {/* Remaining Stock Badge */}
             <div className="text-right">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
                 In Stock
               </div>
               <div
-                className={`text-xs font-extrabold px-2 py-0.5 rounded-full inline-block ${
+                className={`text-sm md:text-base font-black px-3 py-1 rounded-xl inline-block mt-0.5 font-mono ${
                   remainingStock > 200
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-200'
                     : remainingStock > 0
-                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    ? 'bg-amber-50 text-amber-800 border-2 border-amber-200'
+                    : 'bg-rose-50 text-rose-800 border-2 border-rose-200'
                 }`}
               >
                 {remainingStock} eggs
@@ -389,11 +389,11 @@ export const EmployeeDashboard: React.FC<Props> = ({
           </div>
 
           {/* Quantity & Calculation Card */}
-          <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+          <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between text-xs md:text-sm font-black text-slate-700">
               <span>ENTER EGG QUANTITY</span>
               {eggQuantity >= 30 && (
-                <span className="text-blue-600 font-mono text-[11px] bg-blue-50 px-2 py-0.5 rounded-full">
+                <span className="text-blue-700 font-mono font-black text-xs bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
                   {Math.floor(eggQuantity / 30)} Tray{Math.floor(eggQuantity / 30) > 1 ? 's' : ''}
                   {eggQuantity % 30 > 0 ? ` + ${eggQuantity % 30} loose` : ''}
                 </span>
@@ -401,60 +401,60 @@ export const EmployeeDashboard: React.FC<Props> = ({
             </div>
 
             {/* Large Quantity Input Display */}
-            <div className="bg-slate-50 border-2 border-blue-500/30 rounded-2xl p-2.5 flex items-baseline justify-between">
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
+            <div className="bg-slate-50 border-2 border-blue-500/40 rounded-2xl p-3.5 flex items-baseline justify-between shadow-inner">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-4xl md:text-5xl font-black text-slate-900 font-mono tracking-tight">
                   {eggQuantityStr || '0'}
                 </span>
-                <span className="text-sm font-semibold text-slate-500">Eggs</span>
+                <span className="text-base font-extrabold text-slate-500">Eggs</span>
               </div>
 
               {/* Automatic Total Calculation */}
               <div className="text-right">
-                <div className="text-[10px] font-bold text-slate-400 uppercase">Total Amount</div>
-                <div className="text-2xl font-black text-blue-700 font-mono">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Total Amount</div>
+                <div className="text-3xl md:text-4xl font-black text-blue-700 font-mono">
                   ₹{calculatedTotal}
                 </div>
               </div>
             </div>
 
             {/* Price formula hint */}
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5 px-1">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-500 pt-0.5 px-1 font-mono">
               <span>Formula: {eggQuantity || 0} × ₹{pricePerEgg}</span>
-              <span className="font-semibold text-slate-700">Net = ₹{calculatedTotal}</span>
+              <span className="font-black text-slate-800">Net = ₹{calculatedTotal}</span>
             </div>
 
             {/* Stock Insufficient Warning */}
             {isStockInsufficient && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-2 text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3 text-sm text-rose-700 font-bold flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
                 <span>Insufficient stock! Only {remainingStock} eggs available. Cannot create bill.</span>
               </div>
             )}
 
             {billingError && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-2 text-xs text-rose-700 font-bold flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
+              <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3 text-sm text-rose-700 font-bold flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
                 <span>{billingError}</span>
               </div>
             )}
           </div>
 
           {/* Quick-Add Quantity Chips */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-bold text-slate-500 uppercase px-1">
+          <div className="space-y-1.5">
+            <div className="text-xs font-black text-slate-500 uppercase px-1">
               Quick Quantities (Tap to set)
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {quickQuantities.map((qty) => (
                 <button
                   key={qty}
                   type="button"
                   onClick={() => handleSetQuick(qty)}
-                  className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 ${
+                  className={`px-3.5 py-2 rounded-xl font-black text-sm md:text-base transition-all active:scale-95 ${
                     eggQuantity === qty
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-200'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                      : 'bg-white border-2 border-slate-200 text-slate-800 hover:bg-blue-50 hover:border-blue-300'
                   }`}
                 >
                   {qty}
@@ -463,7 +463,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadClear}
-                className="px-2.5 py-1.5 rounded-xl font-bold text-xs bg-slate-200 text-slate-700 hover:bg-slate-300 transition-all active:scale-95"
+                className="px-3.5 py-2 rounded-xl font-black text-sm bg-slate-200 text-slate-800 hover:bg-slate-300 transition-all active:scale-95"
               >
                 Clear
               </button>
@@ -471,14 +471,14 @@ export const EmployeeDashboard: React.FC<Props> = ({
           </div>
 
           {/* Touch Number Pad for Phone */}
-          <div className="bg-white rounded-2xl p-2 border border-slate-200 shadow-xs">
-            <div className="grid grid-cols-3 gap-1.5">
+          <div className="bg-white rounded-3xl p-3 border-2 border-slate-200 shadow-xs">
+            <div className="grid grid-cols-3 gap-2">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                 <button
                   key={d}
                   type="button"
                   onClick={() => handleKeypadDigit(d)}
-                  className="h-11 rounded-xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-800 font-bold text-lg flex items-center justify-center border border-slate-200/80 active:scale-95 transition-all shadow-2xs"
+                  className="h-14 md:h-16 rounded-2xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl md:text-3xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-xs"
                 >
                   {d}
                 </button>
@@ -487,7 +487,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadClear}
-                className="h-11 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-600 font-bold text-xs flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
+                className="h-14 md:h-16 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-sm md:text-base flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
               >
                 CLEAR
               </button>
@@ -495,7 +495,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handleKeypadDigit('0')}
-                className="h-11 rounded-xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-800 font-bold text-lg flex items-center justify-center border border-slate-200/80 active:scale-95 transition-all shadow-2xs"
+                className="h-14 md:h-16 rounded-2xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl md:text-3xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-xs"
               >
                 0
               </button>
@@ -503,26 +503,26 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadBackspace}
-                className="h-11 rounded-xl bg-slate-100 hover:bg-rose-50 active:bg-rose-100 text-rose-600 flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
+                className="h-14 md:h-16 rounded-2xl bg-slate-100 hover:bg-rose-50 active:bg-rose-100 text-rose-600 flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
               >
-                <Delete className="w-5 h-5" />
+                <Delete className="w-7 h-7" />
               </button>
             </div>
           </div>
 
           {/* Main Action Buttons */}
-          <div className="pt-1 pb-4 space-y-2">
+          <div className="pt-2 pb-6 space-y-2.5">
             <button
               type="button"
               onClick={() => handleCreateBill(true)}
               disabled={isCreatingBill || eggQuantity <= 0 || isStockInsufficient}
-              className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98 ${
+              className={`w-full py-4 md:py-5 px-6 rounded-2xl font-black text-base md:text-lg uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-xl transition-all active:scale-98 ${
                 eggQuantity > 0 && !isStockInsufficient
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25 ring-2 ring-blue-400/30'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/35 ring-4 ring-blue-400/20'
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               }`}
             >
-              <Printer className="w-5 h-5" />
+              <Printer className="w-6 h-6" />
               <span>{isCreatingBill ? 'Generating Bill...' : 'Create & Print Bill'}</span>
             </button>
 
@@ -530,13 +530,13 @@ export const EmployeeDashboard: React.FC<Props> = ({
               type="button"
               onClick={() => handleCreateBill(false)}
               disabled={isCreatingBill || eggQuantity <= 0 || isStockInsufficient}
-              className={`w-full py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-98 ${
+              className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all active:scale-98 ${
                 eggQuantity > 0 && !isStockInsufficient
-                  ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'
+                  ? 'bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 shadow-sm'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
               }`}
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
               <span>Create Bill Only (No Print)</span>
             </button>
           </div>
