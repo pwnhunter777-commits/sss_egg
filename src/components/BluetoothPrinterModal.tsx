@@ -4,6 +4,7 @@ import { thermalPrinter } from '../lib/thermalPrinter';
 import { setLocalPrinter } from '../lib/offlineStorage';
 import { playPrintClickSound } from '../lib/soundNotification';
 import { Bluetooth, Printer, CheckCircle2, AlertCircle, RefreshCw, X, Sliders } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   printer: PrinterDevice;
@@ -18,6 +19,7 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
   onUpdatePrinter,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const [connecting, setConnecting] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
     try {
       const res = await thermalPrinter.printBill(sampleBill, settings, printer.paperWidth);
       if (res.success) {
-        setStatusMsg('Test print command completed!');
+        setStatusMsg(t('testPrintSuccess'));
       } else {
         setErrorMsg(res.error || 'Test print failed');
       }
@@ -119,7 +121,7 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
         <div className="bg-blue-700 text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bluetooth className="w-5 h-5 text-blue-200" />
-            <h3 className="font-bold text-base">Bluetooth Thermal Printer</h3>
+            <h3 className="font-bold text-base">{t('printerModalTitle')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -144,7 +146,7 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
                     {isConnected ? printer.name || 'Bluetooth Printer' : 'No Printer Connected'}
                   </div>
                   <div className="text-[11px] text-slate-500">
-                    {isConnected ? 'Ready for printing' : 'Connect 58mm / 80mm thermal device'}
+                    {isConnected ? t('printerConnected') : t('printerDisconnected')}
                   </div>
                 </div>
               </div>
@@ -165,12 +167,12 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
                   {connecting ? (
                     <>
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      Scanning...
+                      {t('connectingBt')}
                     </>
                   ) : (
                     <>
                       <Bluetooth className="w-3.5 h-3.5" />
-                      Connect
+                      {t('connectBtPrinter')}
                     </>
                   )}
                 </button>
@@ -182,7 +184,7 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
               <Sliders className="w-3.5 h-3.5 text-blue-600" />
-              Thermal Receipt Paper Width
+              {t('paperWidthLabel')}
             </label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -215,8 +217,7 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
           {/* Auto-Print Option */}
           <label className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
             <div>
-              <div className="text-xs font-semibold text-slate-800">Auto Print on Bill Creation</div>
-              <div className="text-[11px] text-slate-500">Automatically trigger print after saving bill</div>
+              <div className="text-xs font-semibold text-slate-800">{t('autoPrintLabel')}</div>
             </div>
             <input
               type="checkbox"
@@ -241,13 +242,6 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Web Bluetooth Notice if not supported */}
-          {!isBtSupported && (
-            <div className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-              Note: Web Bluetooth direct scanning requires Chrome/Edge on Android or desktop. If unavailable, the app automatically uses System Thermal Print for connected USB, Network, or Paired Bluetooth printers!
-            </div>
-          )}
-
           {/* Test Print Button */}
           <div className="pt-2 flex gap-2">
             <button
@@ -256,14 +250,14 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
               className="flex-1 bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-medium text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm"
             >
               <Printer className="w-4 h-4" />
-              <span>{testPrinting ? 'Printing Test...' : 'Print Test Receipt'}</span>
+              <span>{testPrinting ? t('printing') : t('testPrintButton')}</span>
             </button>
 
             <button
               onClick={onClose}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl transition-all"
             >
-              Done
+              {t('done')}
             </button>
           </div>
         </div>

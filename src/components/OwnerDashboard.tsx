@@ -10,6 +10,8 @@ import {
 import { EggAgencyService } from '../services/eggAgencyService';
 import { getTodayDateString, formatIndianCurrency } from '../lib/offlineStorage';
 import { playChimeSound } from '../lib/soundNotification';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from './LanguageToggle';
 import { DailyPriceModal } from './DailyPriceModal';
 import { StockImportModal } from './StockImportModal';
 import { OwnerSettingsModal } from './OwnerSettingsModal';
@@ -27,7 +29,6 @@ import {
   Settings,
   PackagePlus,
   Printer,
-  ChevronRight,
   Calendar,
   Search,
   CheckCircle,
@@ -51,6 +52,7 @@ export const OwnerDashboard: React.FC<Props> = ({
   onUpdatePrinter,
   onLogout,
 }) => {
+  const { t, isTamil } = useLanguage();
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateString());
   const [todayPrice, setTodayPrice] = useState<DailyPrice | null>(null);
   const [todayStock, setTodayStock] = useState<DailyStock | null>(null);
@@ -157,27 +159,24 @@ export const OwnerDashboard: React.FC<Props> = ({
   return (
     <div className="flex-1 flex flex-col bg-slate-100 text-slate-800">
       {/* Top Header */}
-      <header className="bg-blue-800 text-white px-4 py-3 shadow-md shrink-0">
+      <header className="bg-blue-800 text-white px-3.5 py-3 shadow-md shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
-              <Egg className="w-5 h-5 text-amber-300" />
-            </div>
             <div>
-              <h1 className="font-extrabold text-sm tracking-tight uppercase leading-tight">
-                {settings.agencyName || 'SSS EGG AGENCY'}
+              <h1 className="font-black text-sm md:text-base tracking-tight uppercase leading-tight">
+                {isTamil && settings.agencyName === 'SSS EGG AGENCY'
+                  ? t('agencyNameDefault')
+                  : settings.agencyName || t('agencyNameDefault')}
               </h1>
-              <div className="flex items-center gap-1.5 text-[11px] text-blue-200">
-                <span className="font-semibold text-white">Owner Dashboard</span>
-                <span>•</span>
-                <span className="flex items-center gap-1">
+              <div className="flex items-center gap-2 text-xs text-blue-200 font-bold mt-0.5">
+                <span className="flex items-center gap-1 font-black">
                   {isOnline ? (
-                    <span className="text-emerald-300 flex items-center gap-0.5">
-                      <Wifi className="w-3 h-3" /> Online
+                    <span className="text-emerald-300 flex items-center gap-1">
+                      <Wifi className="w-3.5 h-3.5" /> {t('online')}
                     </span>
                   ) : (
-                    <span className="text-amber-300 flex items-center gap-0.5">
-                      <WifiOff className="w-3 h-3" /> Offline
+                    <span className="text-amber-300 flex items-center gap-1 font-black">
+                      <WifiOff className="w-3.5 h-3.5" /> {t('offline')}
                     </span>
                   )}
                 </span>
@@ -186,6 +185,9 @@ export const OwnerDashboard: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Language Switcher */}
+            <LanguageToggle variant="header" />
+
             {/* Real-time Notifications Bell */}
             <button
               type="button"
@@ -195,7 +197,7 @@ export const OwnerDashboard: React.FC<Props> = ({
             >
               <Bell className="w-4 h-4" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce shadow-xs">
                   {unreadNotifsCount}
                 </span>
               )}
@@ -206,7 +208,7 @@ export const OwnerDashboard: React.FC<Props> = ({
               type="button"
               onClick={() => setShowSettingsModal(true)}
               className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-              title="Settings"
+              title={t('settings')}
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -216,7 +218,7 @@ export const OwnerDashboard: React.FC<Props> = ({
               type="button"
               onClick={onLogout}
               className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors"
-              title="Logout"
+              title={t('logout')}
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -230,20 +232,20 @@ export const OwnerDashboard: React.FC<Props> = ({
               const matched = bills.find((b) => b.billId === activeBannerNotif.billId);
               if (matched) setActiveReceiptBill(matched);
             }}
-            className="mt-2.5 bg-amber-400 text-amber-950 p-2.5 rounded-xl shadow-lg flex items-center justify-between cursor-pointer animate-in slide-in-from-top-3 border border-amber-300"
+            className="mt-3 bg-amber-400 text-amber-950 p-3 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer animate-in slide-in-from-top-3 border-2 border-amber-300"
           >
-            <div className="flex items-center gap-2">
-              <span className="text-base animate-pulse">🔔</span>
+            <div className="flex items-center gap-2.5">
+              <span className="text-lg animate-pulse">🔔</span>
               <div>
-                <div className="text-xs font-black uppercase tracking-tight">
+                <div className="text-sm font-black uppercase tracking-tight">
                   New Bill Created #{activeBannerNotif.billNumber}
                 </div>
-                <div className="text-[11px] font-medium opacity-90">
+                <div className="text-xs md:text-sm font-bold opacity-95">
                   {activeBannerNotif.eggQuantity} Eggs • {formatIndianCurrency(activeBannerNotif.totalAmount)} • Staff: {activeBannerNotif.employeeName}
                 </div>
               </div>
             </div>
-            <span className="text-[10px] font-bold bg-amber-950/20 px-2 py-1 rounded">View</span>
+            <span className="text-xs font-black bg-amber-950/20 px-3 py-1 rounded-xl">View</span>
           </div>
         )}
       </header>
@@ -260,7 +262,7 @@ export const OwnerDashboard: React.FC<Props> = ({
                 : 'text-slate-600 hover:bg-slate-100 font-bold'
             }`}
           >
-            Overview
+            {t('overview')}
           </button>
           <button
             type="button"
@@ -271,7 +273,7 @@ export const OwnerDashboard: React.FC<Props> = ({
                 : 'text-slate-600 hover:bg-slate-100 font-bold'
             }`}
           >
-            All Bills ({bills.length})
+            {t('allBills')} ({bills.length})
           </button>
         </div>
 
@@ -309,10 +311,10 @@ export const OwnerDashboard: React.FC<Props> = ({
               >
                 <div>
                   <div className="font-black text-slate-900">
-                    Bill #{n.billNumber} • {n.eggQuantity} Eggs
+                    {t('billNo')} #{n.billNumber} • {n.eggQuantity} {t('eggs')}
                   </div>
                   <div className="text-xs font-medium text-slate-500">
-                    {n.time} • Staff: {n.employeeName}
+                    {n.time} • {t('staff')}: {n.employeeName}
                   </div>
                 </div>
                 <div className="font-black text-base text-blue-700">{formatIndianCurrency(n.totalAmount)}</div>
@@ -330,28 +332,22 @@ export const OwnerDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowPriceModal(true)}
-              className="bg-white hover:bg-blue-50/60 p-4 rounded-3xl border-2 border-blue-200 shadow-xs flex items-center gap-3 active:scale-98 transition-all text-left"
+              className="bg-white hover:bg-blue-50/60 p-4 rounded-3xl border-2 border-blue-200 shadow-xs flex items-center justify-between active:scale-98 transition-all text-left"
             >
-              <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-2xl shadow-md">
-                ₹
-              </div>
               <div>
-                <div className="text-sm md:text-base font-black text-slate-900">Set Egg Price</div>
-                <div className="text-xs font-bold text-slate-500">₹{todayPrice?.pricePerEgg ?? 3} / egg</div>
+                <div className="text-sm md:text-base font-black text-slate-900">{t('setPrice')}</div>
+                <div className="text-xs font-bold text-slate-500">₹{todayPrice?.pricePerEgg ?? 3} {t('perEgg')}</div>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => setShowStockModal(true)}
-              className="bg-white hover:bg-emerald-50/60 p-4 rounded-3xl border-2 border-emerald-200 shadow-xs flex items-center gap-3 active:scale-98 transition-all text-left"
+              className="bg-white hover:bg-emerald-50/60 p-4 rounded-3xl border-2 border-emerald-200 shadow-xs flex items-center justify-between active:scale-98 transition-all text-left"
             >
-              <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
-                <PackagePlus className="w-6 h-6" />
-              </div>
               <div>
-                <div className="text-sm md:text-base font-black text-slate-900">Import Stock</div>
-                <div className="text-xs font-bold text-slate-500">{remainingStock} in stock</div>
+                <div className="text-sm md:text-base font-black text-slate-900">{t('importStock')}</div>
+                <div className="text-xs font-bold text-slate-500">{remainingStock} {t('inStock')}</div>
               </div>
             </button>
           </div>
@@ -364,7 +360,7 @@ export const OwnerDashboard: React.FC<Props> = ({
                 <div>
                   <div className="text-xs md:text-sm font-black text-blue-200 uppercase tracking-wider flex items-center gap-2">
                     <TrendingUp className="w-5 h-5 text-amber-300" />
-                    <span>TODAY'S TOTAL SALES</span>
+                    <span>{t('todaySales')}</span>
                   </div>
                   <div className="text-4xl md:text-5xl font-black mt-2 font-mono tracking-tight text-white drop-shadow-md">
                     {formatIndianCurrency(totalSales)}
@@ -373,7 +369,7 @@ export const OwnerDashboard: React.FC<Props> = ({
 
                 <div className="text-right">
                   <span className="text-xs md:text-sm bg-blue-900/80 px-3.5 py-1.5 rounded-full text-blue-100 font-black border border-blue-400/30">
-                    1 Egg = ₹{todayPrice?.pricePerEgg ?? 3}
+                    1 {t('egg')} = ₹{todayPrice?.pricePerEgg ?? 3}
                   </span>
                 </div>
               </div>
@@ -383,25 +379,23 @@ export const OwnerDashboard: React.FC<Props> = ({
             <div className="grid grid-cols-2 gap-3">
               {/* Card 2: EGGS SOLD */}
               <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Egg className="w-4 h-4 text-blue-600" />
-                  <span>EGGS SOLD</span>
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                  <span>{t('eggsSold')}</span>
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
                   {totalEggsSold.toLocaleString('en-IN')}{' '}
-                  <span className="text-sm font-bold text-slate-500">eggs</span>
+                  <span className="text-sm font-bold text-slate-500">{t('eggs')}</span>
                 </div>
               </div>
 
               {/* Card 3: REMAINING STOCK */}
               <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Package className="w-4 h-4 text-emerald-600" />
-                  <span>REMAINING</span>
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                  <span>{t('remainingStock')}</span>
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
                   {remainingStock.toLocaleString('en-IN')}{' '}
-                  <span className="text-sm font-bold text-slate-500">eggs</span>
+                  <span className="text-sm font-bold text-slate-500">{t('eggs')}</span>
                 </div>
               </div>
             </div>
@@ -410,21 +404,18 @@ export const OwnerDashboard: React.FC<Props> = ({
             <div className="grid grid-cols-2 gap-3">
               {/* Card 4: TOTAL BILLS */}
               <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-indigo-600" />
-                  <span>TOTAL BILLS</span>
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                  <span>{t('totalBills')}</span>
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
-                  {totalBillsCount}{' '}
-                  <span className="text-sm font-bold text-slate-500">bills</span>
+                  {totalBillsCount}
                 </div>
               </div>
 
               {/* Card 5: TODAY'S PROFIT */}
               <div className="bg-emerald-50 rounded-3xl p-4 md:p-5 border-2 border-emerald-200 shadow-xs">
-                <div className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
-                  <span>PROFIT</span>
+                <div className="text-xs font-black text-emerald-800 uppercase tracking-wider">
+                  <span>{t('profit')}</span>
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-emerald-950 font-mono mt-1.5">
                   {formatIndianCurrency(totalProfit)}
@@ -438,140 +429,90 @@ export const OwnerDashboard: React.FC<Props> = ({
             <div className="flex items-center justify-between">
               <div className="text-sm font-black text-slate-800 uppercase flex items-center gap-2">
                 <User className="w-5 h-5 text-blue-600" />
-                <span>Employee-wise Sales</span>
+                <span>{t('staff')} {t('overview')}</span>
               </div>
             </div>
 
             <div className="p-4 bg-blue-50/80 border-2 border-blue-100 rounded-2xl flex items-center justify-between">
               <div className="space-y-1">
-                <div className="font-black text-sm md:text-base text-blue-950 flex items-center gap-2">
-                  <span>Staff Ramesh</span>
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                </div>
                 <div className="text-xs md:text-sm font-bold text-slate-600">
-                  {totalBillsCount} Bills • {totalEggsSold} Eggs Sold
+                  {totalBillsCount} {t('totalBills')} • {totalEggsSold} {t('eggsSold')}
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-xs font-black text-slate-500 uppercase tracking-wider">Sales Volume</div>
+                <div className="text-xs font-black text-slate-500 uppercase tracking-wider">{t('total')}</div>
                 <div className="text-xl md:text-2xl font-black text-blue-800 font-mono">
                   {formatIndianCurrency(totalSales)}
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Recent Live Bills Feed */}
-          <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-2xs space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span>Live Bills ({bills.length})</span>
-              <button
-                type="button"
-                onClick={() => setActiveTab('bills')}
-                className="text-blue-600 text-xs hover:underline flex items-center gap-0.5"
-              >
-                <span>View All</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {bills.length === 0 ? (
-              <p className="text-center py-4 text-xs text-slate-400">
-                No bills recorded yet for {selectedDate}.
-              </p>
-            ) : (
-              <div className="space-y-1.5">
-                {bills.slice(0, 4).map((b) => (
-                  <div
-                    key={b.billId}
-                    onClick={() => setActiveReceiptBill(b)}
-                    className="p-2.5 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200/60 flex items-center justify-between cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <div className="font-bold text-xs text-slate-900 font-mono">
-                        Bill #{b.billNumber} • {b.eggQuantity} Eggs
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        {b.time} • Profit: ₹{b.profit}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-black text-xs text-blue-900 font-mono">
-                        ₹{b.totalAmount}
-                      </div>
-                      <span className="text-[9px] text-blue-600 font-semibold">Reprint</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
       {/* ALL BILLS TAB */}
       {activeTab === 'bills' && (
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
           {/* Search bar */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by Bill Number, Time, or Eggs..."
+              placeholder={t('searchBillsPlaceholder')}
               value={billSearch}
               onChange={(e) => setBillSearch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border-2 border-slate-300 rounded-2xl pl-11 pr-4 py-3 text-sm md:text-base font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filteredBills.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-500">
-                <p className="text-xs font-semibold">No bills found</p>
+              <div className="bg-white rounded-3xl p-8 text-center border-2 border-slate-200 text-slate-500">
+                <p className="text-sm md:text-base font-black">{t('noBillsFound')}</p>
               </div>
             ) : (
               filteredBills.map((b) => (
                 <div
                   key={b.billId}
-                  className="bg-white rounded-xl p-3 border border-slate-200 shadow-2xs flex items-center justify-between hover:border-blue-300 transition-all"
+                  className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs flex items-center justify-between hover:border-blue-300 transition-all"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-blue-900">
-                        Bill #{b.billNumber}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono font-black text-sm md:text-base text-blue-900">
+                        {t('billNo')} #{b.billNumber}
                       </span>
                       <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-black ${
                           b.syncStatus === 'synced'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
                         }`}
                       >
-                        {b.syncStatus === 'synced' ? 'Synced' : 'Offline'}
+                        {b.syncStatus === 'synced' ? t('synced') : t('offline')}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-600 font-medium">
-                      <span>{b.eggQuantity} Eggs</span>
+                    <div className="text-sm font-bold text-slate-700">
+                      <span>{b.eggQuantity} {t('eggs')}</span>
                       <span className="text-slate-400"> • </span>
-                      <span>₹{b.pricePerEgg}/egg</span>
+                      <span>₹{b.pricePerEgg}{t('perEgg')}</span>
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      {b.time} • Profit: ₹{b.profit}
+                    <div className="text-xs md:text-sm font-bold text-slate-500">
+                      {b.time} • {t('profit')}: ₹{b.profit}
                     </div>
                   </div>
 
-                  <div className="text-right space-y-1.5">
-                    <div className="font-black text-sm text-slate-900 font-mono">
+                  <div className="text-right space-y-2">
+                    <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
                       ₹{b.totalAmount}
                     </div>
                     <button
                       type="button"
                       onClick={() => setActiveReceiptBill(b)}
-                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
+                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs md:text-sm font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-blue-200 active:scale-95 transition-all"
                     >
-                      <Printer className="w-3 h-3" />
-                      <span>Receipt</span>
+                      <Printer className="w-4 h-4" />
+                      <span>{t('receiptPreview')}</span>
                     </button>
                   </div>
                 </div>

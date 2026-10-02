@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { DailyStock } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { getTodayDateString } from '../lib/offlineStorage';
-import { PackagePlus, Check, X, AlertCircle, AlertTriangle, Calendar, Layers } from 'lucide-react';
+import { PackagePlus, Check, X, AlertCircle } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   currentStock: DailyStock | null;
@@ -15,6 +16,7 @@ export const StockImportModal: React.FC<Props> = ({
   onStockUpdated,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const todayStr = getTodayDateString();
 
   const [stockQuantityStr, setStockQuantityStr] = useState<string>('3000');
@@ -67,7 +69,7 @@ export const StockImportModal: React.FC<Props> = ({
     try {
       await EggAgencyService.saveTodayStock(updatedStock);
       onStockUpdated(updatedStock);
-      setSuccessMsg('Stock imported successfully!');
+      setSuccessMsg(t('stockUpdatedSuccess'));
       setTimeout(() => {
         onClose();
       }, 700);
@@ -84,7 +86,7 @@ export const StockImportModal: React.FC<Props> = ({
         {/* Header */}
         <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
           <div>
-            <h3 className="font-black text-base md:text-lg">Daily Stock Import</h3>
+            <h3 className="font-black text-base md:text-lg">{t('stockImportTitle')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -98,7 +100,7 @@ export const StockImportModal: React.FC<Props> = ({
           {/* Stock Imported Input */}
           <div className="space-y-1.5">
             <label className="text-sm font-black text-slate-800 block">
-              <span>Stock Quantity (Eggs)</span>
+              <span>{t('addQuantityLabel')}</span>
             </label>
             <div className="relative">
               <input
@@ -140,7 +142,7 @@ export const StockImportModal: React.FC<Props> = ({
           {/* Purchase Cost / Egg */}
           <div className="space-y-1.5">
             <label className="text-sm font-black text-slate-800 block">
-              <span>Purchase Cost per Egg</span>
+              <span>{t('purchaseCostLabel')}</span>
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
@@ -165,10 +167,10 @@ export const StockImportModal: React.FC<Props> = ({
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
             <div>
               <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                Total Purchase Cost
+                {t('total')}
               </div>
               <div className="text-sm font-bold text-slate-600">
-                {stockQuantity} eggs × ₹{purchaseCost}
+                {stockQuantity} {t('eggs')} × ₹{purchaseCost}
               </div>
             </div>
             <div className="text-2xl font-black text-slate-900 font-mono">
@@ -197,7 +199,7 @@ export const StockImportModal: React.FC<Props> = ({
               onClick={onClose}
               className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm py-3.5 px-4 rounded-2xl transition-all"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -205,7 +207,7 @@ export const StockImportModal: React.FC<Props> = ({
               className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-black text-sm py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
             >
               <PackagePlus className="w-5 h-5" />
-              <span>{isSaving ? 'Saving...' : 'Import Stock'}</span>
+              <span>{isSaving ? t('loading') : t('saveStockButton')}</span>
             </button>
           </div>
         </form>

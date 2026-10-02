@@ -7,6 +7,9 @@ import {
   PrinterDevice,
 } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
+import { formatTime, getTodayDateString } from '../lib/offlineStorage';
+import { useLanguage } from '../context/LanguageContext';
+import { LanguageToggle } from './LanguageToggle';
 import { ThermalReceipt } from './ThermalReceipt';
 import { BluetoothPrinterModal } from './BluetoothPrinterModal';
 import { thermalPrinter } from '../lib/thermalPrinter';
@@ -20,7 +23,6 @@ import {
   Wifi,
   WifiOff,
   AlertCircle,
-  CheckCircle2,
   Delete,
   Search,
   RefreshCw,
@@ -41,6 +43,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
   onUpdatePrinter,
   onLogout,
 }) => {
+  const { t, isTamil } = useLanguage();
   const [activeTab, setActiveTab] = useState<'billing' | 'history'>('billing');
   const [todayPrice, setTodayPrice] = useState<DailyPrice | null>(null);
   const [todayStock, setTodayStock] = useState<DailyStock | null>(null);
@@ -56,6 +59,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
   // Modals
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [activeReceiptBill, setActiveReceiptBill] = useState<Bill | null>(null);
+  const [isReceiptDraft, setIsReceiptDraft] = useState(false);
+  const [draftEggQuantity, setDraftEggQuantity] = useState(0);
 
   // Search in history
   const [historySearch, setHistorySearch] = useState('');
@@ -175,8 +180,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
     setBillingError(null);
   };
 
-  // Create Bill
-  const handleCreateBill = async (shouldAutoPrint: boolean) => {
+  // Open Draft Receipt Preview (Bill is NOT added to database or owner yet)
+  const handleCreateBill = (shouldAutoPrint?: boolean) => {
     if (eggQuantity <= 0) {
       setBillingError('Please enter egg quantity');
       return;
@@ -190,32 +195,55 @@ export const EmployeeDashboard: React.FC<Props> = ({
       return;
     }
 
-    setIsCreatingBill(true);
     setBillingError(null);
+    playPrintClickSound();
 
+    // Generate draft receipt preview
+    const nextBillNum = bills.length > 0 ? Math.max(...bills.map((b) => b.billNumber)) + 1 : 1;
+    const date = getTodayDateString();
+    const timeStr = formatTime(new Date());
+
+    const draftBill: Bill = {
+      billId: `draft_${Date.now()}`,
+      billNumber: nextBillNum,
+      employeeId: 'emp_01',
+      employeeName: 'Staff Employee',
+      date,
+      time: timeStr,
+      createdAt: new Date().toISOString(),
+      eggQuantity,
+      pricePerEgg,
+      pricePer30Eggs,
+      totalAmount: calculatedTotal,
+      purchaseCostPerEgg: todayPrice?.purchaseCost ?? 2,
+      profit: Math.max(0, calculatedTotal - eggQuantity * (todayPrice?.purchaseCost ?? 2)),
+      syncStatus: 'pending',
+    };
+
+    setDraftEggQuantity(eggQuantity);
+    setIsReceiptDraft(true);
+    setActiveReceiptBill(draftBill);
+  };
+
+  // Only after user clicks the "Print Bill" button in receipt modal:
+  // Add bill to Firestore/database, deduct stock, and send real-time notification to owner!
+  const handleConfirmAndSaveDraft = async (): Promise<Bill> => {
+    setIsCreatingBill(true);
     try {
-      const newBill = await EggAgencyService.createBill({
-        eggQuantity,
+      const savedBill = await EggAgencyService.createBill({
+        eggQuantity: draftEggQuantity,
         employeeName: 'Staff Employee',
       });
 
-      // Reset billing input
-      setEggQuantityStr('');
       playChimeSound();
-      setCreatedBill(newBill);
-      setActiveReceiptBill(newBill);
-
-      // Auto print if requested or configured
-      if (shouldAutoPrint || printer.autoPrintOnBill) {
-        setTimeout(() => {
-          thermalPrinter.printBill(newBill, settings, printer.paperWidth).catch(() => {});
-        }, 300);
-      }
+      setEggQuantityStr('');
+      setIsReceiptDraft(false);
+      setActiveReceiptBill(savedBill);
+      setCreatedBill(savedBill);
+      return savedBill;
     } catch (err: any) {
-      setBillingError(err.message || 'Failed to create bill');
-      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate([100, 50, 100]);
-      }
+      setBillingError(err.message || 'Failed to save bill');
+      throw err;
     } finally {
       setIsCreatingBill(false);
     }
@@ -235,27 +263,29 @@ export const EmployeeDashboard: React.FC<Props> = ({
   return (
     <div className="flex-1 flex flex-col bg-slate-100 text-slate-800">
       {/* Top Bar Header */}
-      <header className="bg-blue-700 text-white px-4 py-3 shadow-md shrink-0">
+      <header className="bg-blue-700 text-white px-3.5 py-3 shadow-md shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center border border-white/20">
-              <Egg className="w-5 h-5 text-amber-300" />
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+              <Egg className="w-6 h-6 text-amber-300" />
             </div>
             <div>
-              <h1 className="font-extrabold text-sm tracking-tight uppercase leading-tight">
-                {settings.agencyName || 'SSS EGG AGENCY'}
+              <h1 className="font-black text-sm md:text-base tracking-tight uppercase leading-tight">
+                {isTamil && settings.agencyName === 'SSS EGG AGENCY'
+                  ? t('agencyNameDefault')
+                  : settings.agencyName || t('agencyNameDefault')}
               </h1>
-              <div className="flex items-center gap-1.5 text-[11px] text-blue-200">
-                <span className="font-semibold text-white">Employee Billing</span>
+              <div className="flex items-center gap-2 text-xs text-blue-200 font-bold">
+                <span className="font-black text-white">{t('employee')} {t('billing')}</span>
                 <span>•</span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 font-black">
                   {isOnline ? (
-                    <span className="text-emerald-300 flex items-center gap-0.5">
-                      <Wifi className="w-3 h-3" /> Online
+                    <span className="text-emerald-300 flex items-center gap-1">
+                      <Wifi className="w-3.5 h-3.5" /> {t('online')}
                     </span>
                   ) : (
-                    <span className="text-amber-300 flex items-center gap-0.5 font-bold">
-                      <WifiOff className="w-3 h-3" /> Offline
+                    <span className="text-amber-300 flex items-center gap-1 font-black">
+                      <WifiOff className="w-3.5 h-3.5" /> {t('offline')}
                     </span>
                   )}
                 </span>
@@ -264,21 +294,21 @@ export const EmployeeDashboard: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {/* Language Switcher */}
+            <LanguageToggle variant="header" />
+
             {/* Bluetooth Printer Button */}
             <button
               type="button"
               onClick={() => setShowPrinterModal(true)}
-              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`p-2 rounded-xl text-xs font-black flex items-center gap-1 transition-all ${
                 thermalPrinter.isConnected()
-                  ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30'
+                  ? 'bg-emerald-500/20 text-emerald-200 border-2 border-emerald-400/40'
                   : 'bg-white/10 text-white hover:bg-white/20'
               }`}
-              title="Thermal Printer"
+              title={t('printerSetup')}
             >
               <Printer className="w-4 h-4" />
-              <span className="text-[10px] hidden xs:inline">
-                {thermalPrinter.isConnected() ? 'Printer ON' : 'Printer'}
-              </span>
             </button>
 
             {/* Logout Button */}
@@ -286,7 +316,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               type="button"
               onClick={onLogout}
               className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors"
-              title="Logout"
+              title={t('logout')}
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -295,21 +325,21 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
         {/* Sync banner if pending bills */}
         {pendingSyncCount > 0 && (
-          <div className="mt-2 bg-amber-400/20 border border-amber-300/30 rounded-lg px-2.5 py-1 flex items-center justify-between text-[11px] text-amber-200">
-            <span>{pendingSyncCount} bill(s) saved locally (Offline)</span>
+          <div className="mt-2.5 bg-amber-400/25 border-2 border-amber-300/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs md:text-sm font-black text-amber-200">
+            <span>{pendingSyncCount} {t('pendingSync')}</span>
             <button
               onClick={triggerAutoSync}
               disabled={isSyncing || !isOnline}
-              className="text-[10px] font-bold bg-amber-400 text-amber-950 px-2 py-0.5 rounded flex items-center gap-1"
+              className="text-xs font-black bg-amber-400 text-amber-950 px-3 py-1 rounded-lg flex items-center gap-1"
             >
-              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Syncing...' : 'Sync Now'}
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              {isSyncing ? '...' : t('update')}
             </button>
           </div>
         )}
 
         {syncStatusMsg && (
-          <div className="mt-1 bg-emerald-400/20 border border-emerald-300/30 rounded-lg px-2.5 py-1 text-[11px] text-emerald-200">
+          <div className="mt-2 bg-emerald-400/25 border-2 border-emerald-300/40 rounded-xl px-3 py-1.5 text-xs md:text-sm font-black text-emerald-200">
             {syncStatusMsg}
           </div>
         )}
@@ -327,7 +357,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
           }`}
         >
           <PlusCircle className="w-5 h-5" />
-          <span>Create Bill</span>
+          <span>{t('createAndPrint')}</span>
         </button>
 
         <button
@@ -340,7 +370,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
           }`}
         >
           <History className="w-5 h-5" />
-          <span>Bill History ({bills.length})</span>
+          <span>{t('billHistory')} ({bills.length})</span>
         </button>
       </nav>
 
@@ -354,17 +384,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
                 🥚
               </div>
               <div>
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                  Today's Price (Set by Owner)
-                </div>
-                <div className="flex items-center gap-2.5 mt-0.5">
-                  <span className="text-xl md:text-2xl font-black text-blue-900 font-mono">
-                    ₹{pricePerEgg} <span className="text-xs font-bold text-slate-500">/ egg</span>
-                  </span>
-                  <span className="text-slate-300 font-bold">•</span>
-                  <span className="text-sm md:text-base font-black text-slate-800 font-mono">
-                    30 Eggs = ₹{pricePer30Eggs}
-                  </span>
+                <div className="text-xl md:text-2xl font-black text-blue-900 font-mono">
+                  ₹{pricePerEgg} <span className="text-xs font-bold text-slate-500">/ egg</span>
                 </div>
               </div>
             </div>
@@ -372,7 +393,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
             {/* Remaining Stock Badge */}
             <div className="text-right">
               <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                In Stock
+                {t('inStock')}
               </div>
               <div
                 className={`text-sm md:text-base font-black px-3 py-1 rounded-xl inline-block mt-0.5 font-mono ${
@@ -383,7 +404,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                     : 'bg-rose-50 text-rose-800 border-2 border-rose-200'
                 }`}
               >
-                {remainingStock} eggs
+                {remainingStock} {t('eggs')}
               </div>
             </div>
           </div>
@@ -391,11 +412,11 @@ export const EmployeeDashboard: React.FC<Props> = ({
           {/* Quantity & Calculation Card */}
           <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-sm space-y-3">
             <div className="flex items-center justify-between text-xs md:text-sm font-black text-slate-700">
-              <span>ENTER EGG QUANTITY</span>
+              <span>{t('enterEggQty')}</span>
               {eggQuantity >= 30 && (
                 <span className="text-blue-700 font-mono font-black text-xs bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
-                  {Math.floor(eggQuantity / 30)} Tray{Math.floor(eggQuantity / 30) > 1 ? 's' : ''}
-                  {eggQuantity % 30 > 0 ? ` + ${eggQuantity % 30} loose` : ''}
+                  {Math.floor(eggQuantity / 30)} {Math.floor(eggQuantity / 30) > 1 ? t('trays') : t('tray')}
+                  {eggQuantity % 30 > 0 ? ` + ${eggQuantity % 30} ${t('loose')}` : ''}
                 </span>
               )}
             </div>
@@ -406,29 +427,23 @@ export const EmployeeDashboard: React.FC<Props> = ({
                 <span className="text-4xl md:text-5xl font-black text-slate-900 font-mono tracking-tight">
                   {eggQuantityStr || '0'}
                 </span>
-                <span className="text-base font-extrabold text-slate-500">Eggs</span>
+                <span className="text-base font-extrabold text-slate-500">{t('eggs')}</span>
               </div>
 
               {/* Automatic Total Calculation */}
               <div className="text-right">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">Total Amount</div>
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{t('totalAmount')}</div>
                 <div className="text-3xl md:text-4xl font-black text-blue-700 font-mono">
                   ₹{calculatedTotal}
                 </div>
               </div>
             </div>
 
-            {/* Price formula hint */}
-            <div className="flex items-center justify-between text-xs font-bold text-slate-500 pt-0.5 px-1 font-mono">
-              <span>Formula: {eggQuantity || 0} × ₹{pricePerEgg}</span>
-              <span className="font-black text-slate-800">Net = ₹{calculatedTotal}</span>
-            </div>
-
             {/* Stock Insufficient Warning */}
             {isStockInsufficient && (
               <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3 text-sm text-rose-700 font-bold flex items-center gap-2 animate-in fade-in">
                 <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
-                <span>Insufficient stock! Only {remainingStock} eggs available. Cannot create bill.</span>
+                <span>{t('insufficientStock', { stock: remainingStock })}</span>
               </div>
             )}
 
@@ -443,7 +458,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
           {/* Quick-Add Quantity Chips */}
           <div className="space-y-1.5">
             <div className="text-xs font-black text-slate-500 uppercase px-1">
-              Quick Quantities (Tap to set)
+              {t('quickQuantities')}
             </div>
             <div className="flex flex-wrap gap-2">
               {quickQuantities.map((qty) => (
@@ -465,7 +480,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                 onClick={handleKeypadClear}
                 className="px-3.5 py-2 rounded-xl font-black text-sm bg-slate-200 text-slate-800 hover:bg-slate-300 transition-all active:scale-95"
               >
-                Clear
+                {t('clear')}
               </button>
             </div>
           </div>
@@ -489,7 +504,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                 onClick={handleKeypadClear}
                 className="h-14 md:h-16 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-sm md:text-base flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
               >
-                CLEAR
+                {t('clear')}
               </button>
 
               <button
@@ -523,21 +538,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               }`}
             >
               <Printer className="w-6 h-6" />
-              <span>{isCreatingBill ? 'Generating Bill...' : 'Create & Print Bill'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleCreateBill(false)}
-              disabled={isCreatingBill || eggQuantity <= 0 || isStockInsufficient}
-              className={`w-full py-3.5 px-6 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all active:scale-98 ${
-                eggQuantity > 0 && !isStockInsufficient
-                  ? 'bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 shadow-sm'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-              <span>Create Bill Only (No Print)</span>
+              <span>{isCreatingBill ? t('generatingBill') : t('createAndPrint')}</span>
             </button>
           </div>
         </div>
@@ -545,73 +546,76 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
       {/* TAB CONTENT: BILL HISTORY */}
       {activeTab === 'history' && (
-        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
+        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
           {/* Search Bar */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by Bill # or Time..."
+              placeholder={t('searchHistoryPlaceholder')}
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border-2 border-slate-300 rounded-2xl pl-11 pr-4 py-3 text-sm md:text-base font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           {/* Bills List */}
-          <div className="flex-1 space-y-2">
+          <div className="flex-1 space-y-3">
             {filteredBills.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-500 space-y-2">
-                <Egg className="w-10 h-10 mx-auto text-slate-300" />
-                <p className="font-semibold text-xs">No bills created yet today</p>
-                <p className="text-[11px] text-slate-400">
-                  Switch to the "Create Bill" tab to create your first bill.
+              <div className="bg-white rounded-3xl p-8 text-center border-2 border-slate-200 text-slate-500 space-y-2">
+                <Egg className="w-12 h-12 mx-auto text-slate-300" />
+                <p className="font-black text-sm md:text-base text-slate-700">{t('noBillsFound')}</p>
+                <p className="text-xs md:text-sm font-bold text-slate-500">
+                  {t('noBillsRecordedYet')}
                 </p>
               </div>
             ) : (
               filteredBills.map((b) => (
                 <div
                   key={b.billId}
-                  className="bg-white rounded-xl p-3 border border-slate-200 shadow-2xs flex items-center justify-between hover:border-blue-300 transition-all"
+                  className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs flex items-center justify-between hover:border-blue-300 transition-all"
                 >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-xs text-blue-900">
-                        Bill #{b.billNumber}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono font-black text-sm md:text-base text-blue-900">
+                        {t('billNo')} #{b.billNumber}
                       </span>
                       <span
-                        className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-black ${
                           b.syncStatus === 'synced'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
                         }`}
                       >
-                        {b.syncStatus === 'synced' ? 'Synced' : 'Offline'}
+                        {b.syncStatus === 'synced' ? t('synced') : t('offline')}
                       </span>
                     </div>
 
-                    <div className="text-xs text-slate-600 font-medium">
-                      <span>{b.eggQuantity} Eggs</span>
+                    <div className="text-sm font-bold text-slate-700">
+                      <span>{b.eggQuantity} {t('eggs')}</span>
                       <span className="text-slate-400"> • </span>
-                      <span>₹{b.pricePerEgg}/egg</span>
+                      <span>₹{b.pricePerEgg}{t('perEgg')}</span>
                     </div>
 
-                    <div className="text-[10px] text-slate-400">
-                      {b.time} • Staff: {b.employeeName}
+                    <div className="text-xs md:text-sm font-bold text-slate-500">
+                      {b.time} • {t('staff')}: {b.employeeName}
                     </div>
                   </div>
 
-                  <div className="text-right space-y-1.5">
-                    <div className="font-black text-sm text-slate-900 font-mono">
+                  <div className="text-right space-y-2">
+                    <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
                       ₹{b.totalAmount}
                     </div>
                     <button
                       type="button"
-                      onClick={() => setActiveReceiptBill(b)}
-                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
+                      onClick={() => {
+                        setIsReceiptDraft(false);
+                        setActiveReceiptBill(b);
+                      }}
+                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs md:text-sm font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-blue-200 active:scale-95 transition-all"
                     >
-                      <Printer className="w-3 h-3" />
-                      <span>Reprint</span>
+                      <Printer className="w-4 h-4" />
+                      <span>{t('reprint')}</span>
                     </button>
                   </div>
                 </div>
@@ -627,9 +631,15 @@ export const EmployeeDashboard: React.FC<Props> = ({
           bill={activeReceiptBill}
           settings={settings}
           printer={printer}
-          onClose={() => setActiveReceiptBill(null)}
+          isDraft={isReceiptDraft}
+          onConfirmAndSave={isReceiptDraft ? handleConfirmAndSaveDraft : undefined}
+          onClose={() => {
+            setActiveReceiptBill(null);
+            setIsReceiptDraft(false);
+          }}
           onOpenPrinterSettings={() => {
             setActiveReceiptBill(null);
+            setIsReceiptDraft(false);
             setShowPrinterModal(true);
           }}
         />

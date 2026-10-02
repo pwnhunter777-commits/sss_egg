@@ -3,6 +3,7 @@ import { DailyPrice } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { getTodayDateString } from '../lib/offlineStorage';
 import { Check, X, AlertCircle, Plus, Minus } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   currentPrice: DailyPrice | null;
@@ -15,6 +16,7 @@ export const DailyPriceModal: React.FC<Props> = ({
   onPriceUpdated,
   onClose,
 }) => {
+  const { t } = useLanguage();
   const todayStr = getTodayDateString();
   const [pricePerEggStr, setPricePerEggStr] = useState<string>(
     String(currentPrice?.pricePerEgg ?? 3)
@@ -73,7 +75,7 @@ export const DailyPriceModal: React.FC<Props> = ({
     try {
       await EggAgencyService.saveTodayPrice(updatedPrice);
       onPriceUpdated(updatedPrice);
-      setSuccessMsg("Today's price saved successfully!");
+      setSuccessMsg(t('priceUpdatedSuccess'));
       setTimeout(() => {
         onClose();
       }, 700);
@@ -90,7 +92,7 @@ export const DailyPriceModal: React.FC<Props> = ({
         {/* Header */}
         <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
           <div>
-            <h3 className="font-black text-base md:text-lg">Update Daily Price</h3>
+            <h3 className="font-black text-base md:text-lg">{t('setDailyPriceTitle')}</h3>
           </div>
           <button
             onClick={onClose}
@@ -104,7 +106,7 @@ export const DailyPriceModal: React.FC<Props> = ({
           {/* Price of 1 Egg */}
           <div className="space-y-1.5">
             <label className="text-sm font-black text-slate-800 block">
-              <span>Price of 1 Egg</span>
+              <span>{t('pricePerEggLabel')}</span>
             </label>
             <div className="flex items-center gap-2.5">
               <button
@@ -141,7 +143,7 @@ export const DailyPriceModal: React.FC<Props> = ({
           {/* Price of 30 Eggs */}
           <div className="space-y-1.5">
             <label className="text-sm font-black text-slate-800 block">
-              <span>Price of 30 Eggs (1 Tray)</span>
+              <span>{t('pricePer30Label')}</span>
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
@@ -183,7 +185,7 @@ export const DailyPriceModal: React.FC<Props> = ({
               onClick={onClose}
               className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm py-3.5 px-4 rounded-2xl transition-all"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -191,7 +193,7 @@ export const DailyPriceModal: React.FC<Props> = ({
               className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-black text-sm py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
             >
               <Check className="w-5 h-5" />
-              <span>{isSaving ? 'Saving...' : "Save Today's Price"}</span>
+              <span>{isSaving ? t('loading') : t('saveAndLockPrice')}</span>
             </button>
           </div>
         </form>

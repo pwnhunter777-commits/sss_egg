@@ -1,5 +1,165 @@
 @import "tailwindcss";
 
+@layer base {
+  body {
+    font-weight: 700;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Tamil Typography Enhancement: Make all Tamil text distinctly BIG, ULTRA BOLD, and SOLID BLOCK COLOUR */
+html[lang="ta"],
+body.lang-ta,
+.lang-ta {
+  font-family: 'Noto Sans Tamil', 'Mukta Malar', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  letter-spacing: 0.015em !important;
+}
+
+/* Ultra Bold weight and subtle stroke for maximum block-ink density */
+html[lang="ta"] body,
+.lang-ta body,
+html[lang="ta"] p,
+.lang-ta p,
+html[lang="ta"] span,
+.lang-ta span,
+html[lang="ta"] div,
+.lang-ta div,
+html[lang="ta"] label,
+.lang-ta label,
+html[lang="ta"] button,
+.lang-ta button,
+html[lang="ta"] input,
+.lang-ta input,
+html[lang="ta"] h1,
+.lang-ta h1,
+html[lang="ta"] h2,
+.lang-ta h2,
+html[lang="ta"] h3,
+.lang-ta h3,
+html[lang="ta"] h4,
+.lang-ta h4 {
+  font-weight: 900 !important;
+  -webkit-text-stroke: 0.3px currentColor;
+  text-rendering: optimizeLegibility;
+}
+
+/* High-Contrast Bold Block Colours - Replace faded, light grey with solid rich block colours */
+html[lang="ta"] .text-slate-400,
+.lang-ta .text-slate-400,
+html[lang="ta"] .text-slate-500,
+.lang-ta .text-slate-500,
+html[lang="ta"] .text-gray-400,
+.lang-ta .text-gray-400,
+html[lang="ta"] .text-gray-500,
+.lang-ta .text-gray-500 {
+  color: #0f172a !important; /* Deep solid block slate/black */
+  opacity: 1 !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-slate-600,
+.lang-ta .text-slate-600,
+html[lang="ta"] .text-slate-700,
+.lang-ta .text-slate-700,
+html[lang="ta"] .text-gray-600,
+.lang-ta .text-gray-600,
+html[lang="ta"] .text-gray-700,
+.lang-ta .text-gray-700 {
+  color: #020617 !important; /* Ultimate deep block pitch black */
+  font-weight: 900 !important;
+}
+
+/* Ensure bright contrast on dark/colored cards (e.g. blue sales card) */
+html[lang="ta"] .text-blue-100,
+.lang-ta .text-blue-100,
+html[lang="ta"] .text-blue-200,
+.lang-ta .text-blue-200,
+html[lang="ta"] .text-blue-300,
+.lang-ta .text-blue-300 {
+  color: #ffffff !important; /* Solid crisp block white */
+  font-weight: 900 !important;
+}
+
+/* Make Tamil text significantly BIGGER across all scales */
+html[lang="ta"] .text-xs,
+.lang-ta .text-xs {
+  font-size: 0.95rem !important; /* was 12px -> now 15.2px */
+  line-height: 1.45rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-sm,
+.lang-ta .text-sm {
+  font-size: 1.15rem !important; /* was 14px -> now 18.4px */
+  line-height: 1.65rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-base,
+.lang-ta .text-base {
+  font-size: 1.28rem !important; /* was 16px -> now 20.5px */
+  line-height: 1.8rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-lg,
+.lang-ta .text-lg {
+  font-size: 1.45rem !important; /* was 18px -> now 23.2px */
+  line-height: 1.95rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-xl,
+.lang-ta .text-xl {
+  font-size: 1.7rem !important; /* was 20px -> now 27.2px */
+  line-height: 2.2rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-2xl,
+.lang-ta .text-2xl {
+  font-size: 2.1rem !important; /* was 24px -> now 33.6px */
+  line-height: 2.5rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-3xl,
+.lang-ta .text-3xl {
+  font-size: 2.65rem !important; /* was 30px -> now 42.4px */
+  line-height: 3.1rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-4xl,
+.lang-ta .text-4xl {
+  font-size: 3.3rem !important; /* was 36px -> now 52.8px */
+  line-height: 3.7rem !important;
+  font-weight: 900 !important;
+}
+
+html[lang="ta"] .text-5xl,
+.lang-ta .text-5xl {
+  font-size: 4rem !important;
+  line-height: 4.4rem !important;
+  font-weight: 900 !important;
+}
+
+/* Prominent input placeholder in bold block color */
+html[lang="ta"] input::placeholder,
+.lang-ta input::placeholder {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #334155 !important;
+  opacity: 1 !important;
+  font-family: 'Noto Sans Tamil', 'Mukta Malar', sans-serif !important;
+}
+
+/* Button Tamil text bold block styling */
+html[lang="ta"] button,
+.lang-ta button {
+  font-weight: 900 !important;
+}
+
 @layer utilities {
   /* Receipt styling */
   .receipt-paper {
