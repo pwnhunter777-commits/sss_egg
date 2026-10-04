@@ -53,6 +53,7 @@ export interface Translations {
   inStock: string;
   remainingStock: string;
   enterEggQty: string;
+  eggQuantity: string;
   totalAmount: string;
   createAndPrint: string;
   confirmAndPrint: string;
@@ -72,6 +73,12 @@ export interface Translations {
   ownerPortal: string;
   overview: string;
   allBills: string;
+  deleteRequests: string;
+  reviewDeleteRequestsTitle: string;
+  noPendingDeleteRequests: string;
+  allClearDesc: string;
+  pendingRequests: string;
+  requestedBy: string;
   settings: string;
   printerSetup: string;
   todaySales: string;
@@ -134,6 +141,24 @@ export interface Translations {
   printing: string;
   savingAndPrinting: string;
   printSuccessMsg: string;
+
+  // Delete Request
+  deleteBill: string;
+  requestDelete: string;
+  deleteRequested: string;
+  requestDeleteTitle: string;
+  requestDeleteDesc: string;
+  deleteReasonLabel: string;
+  deleteReasonPlaceholder: string;
+  sendDeleteRequest: string;
+  deleteRequestSent: string;
+  pendingOwnerApproval: string;
+  approveAndDelete: string;
+  rejectRequest: string;
+  deleteRequestApproved: string;
+  deleteRequestRejected: string;
+  deleteBillPermanently: string;
+  deleteBillConfirmDesc: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -189,6 +214,7 @@ export const translations: Record<Language, Translations> = {
     inStock: 'In Stock',
     remainingStock: 'Remaining Stock',
     enterEggQty: 'ENTER EGG QUANTITY',
+    eggQuantity: 'Egg Quantity',
     totalAmount: 'TOTAL AMOUNT',
     createAndPrint: 'Create & Print Bill',
     confirmAndPrint: 'Confirm & Print Bill',
@@ -208,6 +234,12 @@ export const translations: Record<Language, Translations> = {
     ownerPortal: 'OWNER PORTAL',
     overview: 'Overview',
     allBills: 'All Bills',
+    deleteRequests: 'Delete Requests',
+    reviewDeleteRequestsTitle: 'Revise Delete Requests from Staff',
+    noPendingDeleteRequests: 'No pending delete requests',
+    allClearDesc: 'All bills created by staff are intact and in order.',
+    pendingRequests: 'Pending Requests',
+    requestedBy: 'Requested by',
     settings: 'Settings',
     printerSetup: 'Printer Setup',
     todaySales: "TODAY'S SALES",
@@ -265,6 +297,24 @@ export const translations: Record<Language, Translations> = {
     printing: 'Printing...',
     savingAndPrinting: 'Saving & Printing...',
     printSuccessMsg: 'Receipt print command sent successfully!',
+
+    // Delete Request
+    deleteBill: 'Delete Bill',
+    requestDelete: 'Request Delete',
+    deleteRequested: 'Delete Requested',
+    requestDeleteTitle: 'Request Bill Deletion',
+    requestDeleteDesc: 'Staff cannot delete bills directly. This request will be sent to the Owner for approval.',
+    deleteReasonLabel: 'Reason for Deletion (Optional)',
+    deleteReasonPlaceholder: 'e.g., Customer returned eggs, wrong count entered',
+    sendDeleteRequest: 'Send Request to Owner',
+    deleteRequestSent: 'Delete request sent to Owner successfully. Awaiting approval.',
+    pendingOwnerApproval: 'Pending Owner Approval',
+    approveAndDelete: 'Approve & Delete',
+    rejectRequest: 'Reject Request',
+    deleteRequestApproved: 'Bill deleted and eggs returned to stock',
+    deleteRequestRejected: 'Delete request was rejected by Owner',
+    deleteBillPermanently: 'Delete Bill Permanently',
+    deleteBillConfirmDesc: 'Are you sure you want to permanently delete this bill? Eggs will be returned to available stock.',
   },
   ta: {
     agencyNameDefault: 'SSS முட்டை ஏஜென்சி',
@@ -318,6 +368,7 @@ export const translations: Record<Language, Translations> = {
     inStock: 'கையிருப்பு',
     remainingStock: 'மீதமுள்ள இருப்பு',
     enterEggQty: 'முட்டை எண்ணிக்கையை உள்ளிடவும்',
+    eggQuantity: 'முட்டை எண்ணிக்கை',
     totalAmount: 'மொத்த தொகை',
     createAndPrint: 'பில் தயார் செய்து அச்சிடு',
     confirmAndPrint: 'உறுதி செய்து அச்சிடு',
@@ -337,6 +388,12 @@ export const translations: Record<Language, Translations> = {
     ownerPortal: 'உரிமையாளர் தளம்',
     overview: 'முகப்பு',
     allBills: 'அனைத்து பில்கள்',
+    deleteRequests: 'நீக்குதல் கோரிக்கைகள்',
+    reviewDeleteRequestsTitle: 'பணியாளர் நீக்குதல் கோரிக்கைகள் ஆய்வு',
+    noPendingDeleteRequests: 'நீக்குதல் கோரிக்கைகள் எதுவும் நிலுவையில் இல்லை',
+    allClearDesc: 'பணியாளர்கள் உருவாக்கிய அனைத்து பில்களும் சரியாக உள்ளன.',
+    pendingRequests: 'நிலுவை கோரிக்கைகள்',
+    requestedBy: 'கோரியவர்',
     settings: 'அமைப்புகள்',
     printerSetup: 'பிரிண்டர் அமைவு',
     todaySales: 'இன்றைய விற்பனை',
@@ -394,6 +451,24 @@ export const translations: Record<Language, Translations> = {
     printing: 'அச்சிடப்படுகிறது...',
     savingAndPrinting: 'சேமித்து அச்சிடப்படுகிறது...',
     printSuccessMsg: 'பில் அச்சு வெற்றிகரமாக அனுப்பப்பட்டது!',
+
+    // Delete Request
+    deleteBill: 'பில் நீக்கு',
+    requestDelete: 'நீக்குதல் கோரிக்கை',
+    deleteRequested: 'நீக்குதல் கோரப்பட்டது',
+    requestDeleteTitle: 'பில் நீக்க கோரிக்கை அனுப்பு',
+    requestDeleteDesc: 'ஊழியர்கள் பில்களை நேரடியாக நீக்க முடியாது. இந்த கோரிக்கை உரிமையாளரின் ஒப்புதலுக்காக அனுப்பப்படும்.',
+    deleteReasonLabel: 'நீக்குவதற்கான காரணம் (விருப்பமானது)',
+    deleteReasonPlaceholder: 'எ.கா., வாடிக்கையாளர் முட்டைகளை திருப்பிக் கொடுத்தார், தவறான அளவு',
+    sendDeleteRequest: 'உரிமையாளருக்கு கோரிக்கை அனுப்பு',
+    deleteRequestSent: 'நீக்குதல் கோரிக்கை உரிமையாளருக்கு வெற்றிகரமாக அனுப்பப்பட்டது.',
+    pendingOwnerApproval: 'உரிமையாளர் ஒப்புதலுக்கு காத்திருக்கிறது',
+    approveAndDelete: 'ஒப்புதல் அளித்து நீக்கு',
+    rejectRequest: 'கோரிக்கையை நிராகரி',
+    deleteRequestApproved: 'பில் நீக்கப்பட்டு முட்டைகள் இருப்புக்குத் திரும்பின',
+    deleteRequestRejected: 'நீக்குதல் கோரிக்கை உரிமையாளரால் நிராகரிக்கப்பட்டது',
+    deleteBillPermanently: 'பில்லை நிரந்தரமாக நீக்கு',
+    deleteBillConfirmDesc: 'இந்த பில்லை நிரந்தரமாக நீக்க விரும்புகிறீர்களா? முட்டைகள் மீண்டும் இருப்புக்கு சேர்க்கப்படும்.',
   },
 };
 

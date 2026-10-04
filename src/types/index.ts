@@ -18,6 +18,13 @@ export interface DailyStock {
   updatedAt: string;
 }
 
+export interface BillDeleteRequest {
+  status: 'pending' | 'rejected';
+  requestedAt: string; // ISO
+  requestedBy: string;
+  reason?: string;
+}
+
 export interface Bill {
   billId: string;
   billNumber: number;
@@ -33,6 +40,7 @@ export interface Bill {
   purchaseCostPerEgg: number;
   profit: number;
   syncStatus: 'synced' | 'pending';
+  deleteRequest?: BillDeleteRequest;
 }
 
 export interface BillNotification {
@@ -46,6 +54,8 @@ export interface BillNotification {
   time: string;
   read: boolean;
   createdAt: string;
+  type?: 'new_bill' | 'delete_request' | 'delete_approved' | 'delete_rejected';
+  reason?: string;
 }
 
 export interface AgencySettings {

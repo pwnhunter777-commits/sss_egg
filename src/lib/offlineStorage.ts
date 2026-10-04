@@ -119,6 +119,18 @@ export function markBillSyncedLocally(billId: string): void {
   }
 }
 
+export function deleteLocalBill(billId: string): void {
+  try {
+    const bills = getLocalBills().filter((b) => b.billId !== billId);
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(bills));
+
+    const pending = getLocalPendingBills().filter((p) => p.billId !== billId);
+    localStorage.setItem(STORAGE_KEYS.PENDING_SYNC, JSON.stringify(pending));
+  } catch (e) {
+    console.error('Failed to delete bill locally', e);
+  }
+}
+
 /**
  * Gets the next bill number for a specific date (restarts at 1001 every new day)
  */
@@ -194,6 +206,26 @@ export function deductLocalStock(date: string, quantity: number): DailyStock | n
     return updated;
   } catch (e) {
     console.error('Failed to deduct local stock', e);
+    return null;
+  }
+}
+
+export function restoreLocalStock(date: string, quantity: number): DailyStock | null {
+  try {
+    const stock = getLocalDailyStock(date);
+    if (!stock) return null;
+    const newRemaining = stock.remainingStock + quantity;
+    const newEggsSold = Math.max(0, stock.eggsSold - quantity);
+    const updated: DailyStock = {
+      ...stock,
+      remainingStock: newRemaining,
+      eggsSold: newEggsSold,
+      updatedAt: new Date().toISOString(),
+    };
+    setLocalDailyStock(updated);
+    return updated;
+  } catch (e) {
+    console.error('Failed to restore local stock', e);
     return null;
   }
 }

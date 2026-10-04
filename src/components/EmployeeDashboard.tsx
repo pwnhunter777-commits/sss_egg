@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from './LanguageToggle';
 import { ThermalReceipt } from './ThermalReceipt';
 import { BluetoothPrinterModal } from './BluetoothPrinterModal';
+import { RequestDeleteModal } from './RequestDeleteModal';
 import { thermalPrinter } from '../lib/thermalPrinter';
 import { playChimeSound, playPrintClickSound } from '../lib/soundNotification';
 import {
@@ -24,6 +25,7 @@ import {
   WifiOff,
   AlertCircle,
   Delete,
+  Trash2,
   Search,
   RefreshCw,
   Layers,
@@ -61,6 +63,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const [activeReceiptBill, setActiveReceiptBill] = useState<Bill | null>(null);
   const [isReceiptDraft, setIsReceiptDraft] = useState(false);
   const [draftEggQuantity, setDraftEggQuantity] = useState(0);
+  const [billToDeleteRequest, setBillToDeleteRequest] = useState<Bill | null>(null);
 
   // Search in history
   const [historySearch, setHistorySearch] = useState('');
@@ -577,7 +580,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                   className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs flex items-center justify-between gap-2.5 hover:border-blue-300 transition-all"
                 >
                   {/* Left Details */}
-                  <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-mono font-black text-sm text-blue-900">
                         {t('billNo')} #{b.billNumber}
@@ -591,6 +594,18 @@ export const EmployeeDashboard: React.FC<Props> = ({
                       >
                         {b.syncStatus === 'synced' ? (isTamil ? 'ஒத்திசைக்கப்பட்டது' : 'Synced') : (isTamil ? 'ஆஃப்லைன்' : 'Offline')}
                       </span>
+
+                      {/* Delete Request Status Badge */}
+                      {b.deleteRequest?.status === 'pending' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                          {isTamil ? 'நீக்குதல் கோரப்பட்டது (ஒப்புதலுக்கு காத்திருக்கிறது)' : 'Delete Requested (Pending Owner Approval)'}
+                        </span>
+                      )}
+                      {b.deleteRequest?.status === 'rejected' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-slate-100 text-slate-600 border border-slate-300">
+                          {isTamil ? 'நீக்குதல் நிராகரிக்கப்பட்டது' : 'Delete Rejected'}
+                        </span>
+                      )}
                     </div>
 
                     <div className="text-xs font-bold text-slate-700 truncate">
@@ -604,22 +619,49 @@ export const EmployeeDashboard: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Right Amount & Reprint Button (Never clipped) */}
+                  {/* Right Amount & Actions (Reprint & Delete Request) */}
                   <div className="text-right shrink-0 space-y-1.5">
                     <div className="font-black text-base text-slate-900 font-mono">
                       ₹{Math.round(b.totalAmount).toLocaleString('en-IN')}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsReceiptDraft(false);
-                        setActiveReceiptBill(b);
-                      }}
-                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>{t('reprint')}</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsReceiptDraft(false);
+                          setActiveReceiptBill(b);
+                        }}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
+                        title={t('reprint')}
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>{t('reprint')}</span>
+                      </button>
+
+                      {/* Request Delete Button */}
+                      <button
+                        type="button"
+                        disabled={b.deleteRequest?.status === 'pending'}
+                        onClick={() => setBillToDeleteRequest(b)}
+                        className={`text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1 border active:scale-95 transition-all ${
+                          b.deleteRequest?.status === 'pending'
+                            ? 'bg-rose-50 text-rose-300 border-rose-100 cursor-not-allowed'
+                            : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 shadow-2xs'
+                        }`}
+                        title={
+                          b.deleteRequest?.status === 'pending'
+                            ? t('pendingOwnerApproval')
+                            : t('requestDelete')
+                        }
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>
+                          {b.deleteRequest?.status === 'pending'
+                            ? (isTamil ? 'கோரப்பட்டது' : 'Requested')
+                            : (isTamil ? 'நீக்கு' : 'Delete')}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -655,6 +697,21 @@ export const EmployeeDashboard: React.FC<Props> = ({
           settings={settings}
           onUpdatePrinter={onUpdatePrinter}
           onClose={() => setShowPrinterModal(false)}
+        />
+      )}
+
+      {/* Request Bill Delete Modal */}
+      {billToDeleteRequest && (
+        <RequestDeleteModal
+          bill={billToDeleteRequest}
+          employeeName={billToDeleteRequest.employeeName || 'Staff'}
+          onClose={() => setBillToDeleteRequest(null)}
+          onRequestSubmitted={(updatedBill) => {
+            setBills((prev) =>
+              prev.map((b) => (b.billId === updatedBill.billId ? updatedBill : b))
+            );
+            setBillToDeleteRequest(null);
+          }}
         />
       )}
     </div>

@@ -27,6 +27,8 @@ import {
   getLocalDailyStock,
   setLocalDailyStock,
   deductLocalStock,
+  restoreLocalStock,
+  deleteLocalBill,
   getLocalSettings,
   setLocalSettings,
   getLocalNotifications,
@@ -345,6 +347,132 @@ export const EggAgencyService = {
     }
 
     return { syncedCount, errors };
+  },
+
+  /**
+   * Request bill deletion by employee (sent to Owner for approval)
+   */
+  async requestBillDelete(billId: string, employeeName: string, reason: string): Promise<Bill | null> {
+    const bills = getLocalBills();
+    const bill = bills.find((b) => b.billId === billId);
+    if (!bill) return null;
+
+    const updatedBill: Bill = {
+      ...bill,
+      deleteRequest: {
+        status: 'pending',
+        requestedAt: new Date().toISOString(),
+        requestedBy: employeeName,
+        reason: reason.trim() || 'No reason specified',
+      },
+    };
+
+    saveLocalBill(updatedBill);
+
+    // Save to Firestore and create notification for Owner
+    try {
+      await setDoc(doc(db, 'bills', billId), updatedBill, { merge: true });
+
+      const notifId = `del_req_${billId}_${Date.now()}`;
+      const notif: BillNotification = {
+        notificationId: notifId,
+        billId,
+        billNumber: bill.billNumber,
+        employeeName,
+        eggQuantity: bill.eggQuantity,
+        totalAmount: bill.totalAmount,
+        date: bill.date,
+        time: formatTime(new Date()),
+        read: false,
+        createdAt: new Date().toISOString(),
+        type: 'delete_request',
+        reason: reason.trim() || 'Staff requested deletion',
+      };
+      await setDoc(doc(db, 'notifications', notifId), notif);
+      addLocalNotification(notif);
+    } catch (err) {
+      console.warn('Could not sync delete request immediately to cloud:', err);
+    }
+
+    return updatedBill;
+  },
+
+  /**
+   * Owner approves bill deletion - permanently deletes bill and restores stock
+   */
+  async approveBillDelete(bill: Bill, restoreInventory: boolean = true): Promise<boolean> {
+    try {
+      // 1. Delete locally
+      deleteLocalBill(bill.billId);
+
+      // 2. Restore local stock if requested
+      if (restoreInventory && bill.eggQuantity > 0) {
+        const updatedStock = restoreLocalStock(bill.date, bill.eggQuantity);
+        if (updatedStock) {
+          try {
+            await setDoc(doc(db, 'daily_stock', bill.date), updatedStock, { merge: true });
+          } catch {}
+        }
+      }
+
+      // 3. Delete from Firestore
+      await deleteDoc(doc(db, 'bills', bill.billId));
+
+      // 4. Create notification that delete was approved
+      const notifId = `del_app_${bill.billId}_${Date.now()}`;
+      const notif: BillNotification = {
+        notificationId: notifId,
+        billId: bill.billId,
+        billNumber: bill.billNumber,
+        employeeName: bill.employeeName,
+        eggQuantity: bill.eggQuantity,
+        totalAmount: bill.totalAmount,
+        date: bill.date,
+        time: formatTime(new Date()),
+        read: false,
+        createdAt: new Date().toISOString(),
+        type: 'delete_approved',
+      };
+      try {
+        await setDoc(doc(db, 'notifications', notifId), notif);
+      } catch {}
+      addLocalNotification(notif);
+
+      return true;
+    } catch (err) {
+      console.error('Failed to delete bill:', err);
+      // Still remove locally
+      deleteLocalBill(bill.billId);
+      if (restoreInventory && bill.eggQuantity > 0) {
+        restoreLocalStock(bill.date, bill.eggQuantity);
+      }
+      return true;
+    }
+  },
+
+  /**
+   * Owner rejects bill delete request
+   */
+  async rejectBillDelete(bill: Bill, ownerComment?: string): Promise<boolean> {
+    try {
+      const updatedBill: Bill = {
+        ...bill,
+        deleteRequest: {
+          status: 'rejected',
+          requestedAt: bill.deleteRequest?.requestedAt || new Date().toISOString(),
+          requestedBy: bill.deleteRequest?.requestedBy || 'Staff',
+          reason: ownerComment ? `Rejected: ${ownerComment}` : (bill.deleteRequest?.reason || 'Rejected by owner'),
+        },
+      };
+
+      saveLocalBill(updatedBill);
+
+      await setDoc(doc(db, 'bills', bill.billId), updatedBill, { merge: true });
+      return true;
+    } catch (err) {
+      console.warn('Failed to reject delete request:', err);
+      return false;
+    }
   },
 
   /**

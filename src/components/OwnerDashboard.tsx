@@ -35,6 +35,10 @@ import {
   Wifi,
   WifiOff,
   Sparkles,
+  Trash2,
+  AlertTriangle,
+  ShieldCheck,
+  XCircle,
 } from 'lucide-react';
 
 interface Props {
@@ -67,11 +71,67 @@ export const OwnerDashboard: React.FC<Props> = ({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [activeReceiptBill, setActiveReceiptBill] = useState<Bill | null>(null);
+  const [billToOwnerDelete, setBillToOwnerDelete] = useState<Bill | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'bills'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'bills' | 'delete_requests'>('overview');
   const [billSearch, setBillSearch] = useState('');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  const handleApproveDelete = async (bill: Bill) => {
+    try {
+      await EggAgencyService.approveBillDelete(bill, true);
+      setBills((prev) => prev.filter((b) => b.billId !== bill.billId));
+      setActionFeedback(
+        isTamil
+          ? `பில் #${bill.billNumber} நீக்கப்பட்டது! ${bill.eggQuantity} முட்டைகள் மீண்டும் இருப்புக்கு சேர்க்கப்பட்டன.`
+          : `Bill #${bill.billNumber} deleted! ${bill.eggQuantity} eggs returned to stock.`
+      );
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error('Approve delete failed:', err);
+    }
+  };
+
+  const handleRejectDelete = async (bill: Bill) => {
+    try {
+      await EggAgencyService.rejectBillDelete(bill);
+      setBills((prev) =>
+        prev.map((b) =>
+          b.billId === bill.billId
+            ? { ...b, deleteRequest: { ...b.deleteRequest!, status: 'rejected' } }
+            : b
+        )
+      );
+      setActionFeedback(
+        isTamil
+          ? `பில் #${bill.billNumber} நீக்குதல் கோரிக்கை நிராகரிக்கப்பட்டது.`
+          : `Delete request for Bill #${bill.billNumber} was rejected.`
+      );
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error('Reject delete failed:', err);
+    }
+  };
+
+  const handleOwnerConfirmDelete = async () => {
+    if (!billToOwnerDelete) return;
+    const b = billToOwnerDelete;
+    try {
+      await EggAgencyService.approveBillDelete(b, true);
+      setBills((prev) => prev.filter((item) => item.billId !== b.billId));
+      setBillToOwnerDelete(null);
+      setActionFeedback(
+        isTamil
+          ? `பில் #${b.billNumber} வெற்றிகரமாக நீக்கப்பட்டது! முட்டைகள் இருப்புக்கு திரும்பின.`
+          : `Bill #${b.billNumber} deleted successfully! Eggs returned to stock.`
+      );
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error('Delete failed:', err);
+    }
+  };
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -159,6 +219,11 @@ export const OwnerDashboard: React.FC<Props> = ({
 
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
 
+  const pendingDeleteBills = bills.filter((b) => b.deleteRequest?.status === 'pending');
+  const rejectedDeleteBills = bills.filter((b) => b.deleteRequest?.status === 'rejected');
+  const totalPendingEggs = pendingDeleteBills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
+  const totalPendingAmount = pendingDeleteBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+
   return (
     <div className="flex-1 flex flex-col bg-slate-100 text-slate-800">
       {/* Top Header */}
@@ -232,34 +297,66 @@ export const OwnerDashboard: React.FC<Props> = ({
         {activeBannerNotif && (
           <div
             onClick={() => {
+              if (activeBannerNotif.type === 'delete_request') {
+                setActiveTab('delete_requests');
+              } else {
+                setActiveTab('bills');
+              }
               const matched = bills.find((b) => b.billId === activeBannerNotif.billId);
               if (matched) setActiveReceiptBill(matched);
             }}
-            className="mt-3 bg-amber-400 text-amber-950 p-3 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer animate-in slide-in-from-top-3 border-2 border-amber-300"
+            className={`mt-3 p-3 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer animate-in slide-in-from-top-3 border-2 ${
+              activeBannerNotif.type === 'delete_request'
+                ? 'bg-rose-500 text-white border-rose-300'
+                : 'bg-amber-400 text-amber-950 border-amber-300'
+            }`}
           >
             <div className="flex items-center gap-2.5">
-              <span className="text-lg animate-pulse">🔔</span>
+              <span className="text-lg animate-pulse">
+                {activeBannerNotif.type === 'delete_request' ? '⚠️' : '🔔'}
+              </span>
               <div>
                 <div className="text-sm font-black uppercase tracking-tight">
-                  New Bill Created #{activeBannerNotif.billNumber}
+                  {activeBannerNotif.type === 'delete_request'
+                    ? (isTamil
+                        ? `நீக்குதல் கோரிக்கை: பில் #${activeBannerNotif.billNumber}`
+                        : `Delete Request: Bill #${activeBannerNotif.billNumber}`)
+                    : `New Bill Created #${activeBannerNotif.billNumber}`}
                 </div>
                 <div className="text-xs md:text-sm font-bold opacity-95">
-                  {activeBannerNotif.eggQuantity} Eggs • {formatIndianCurrency(activeBannerNotif.totalAmount)} • Staff: {activeBannerNotif.employeeName}
+                  {activeBannerNotif.type === 'delete_request'
+                    ? `${t('staff')}: ${activeBannerNotif.employeeName} • ${activeBannerNotif.reason || 'Staff requested deletion'}`
+                    : `${activeBannerNotif.eggQuantity} Eggs • ${formatIndianCurrency(activeBannerNotif.totalAmount)} • Staff: ${activeBannerNotif.employeeName}`}
                 </div>
               </div>
             </div>
-            <span className="text-xs font-black bg-amber-950/20 px-3 py-1 rounded-xl">View</span>
+            <span className="text-xs font-black bg-black/20 px-3 py-1 rounded-xl">
+              {activeBannerNotif.type === 'delete_request' ? (isTamil ? 'மதிப்பாய்வு' : 'Review') : 'View'}
+            </span>
           </div>
         )}
       </header>
 
+      {/* Action Feedback Banner */}
+      {actionFeedback && (
+        <div className="bg-emerald-600 text-white px-4 py-2 text-xs md:text-sm font-black flex items-center justify-between shadow-xs animate-fadeIn">
+          <span>{actionFeedback}</span>
+          <button
+            onClick={() => setActionFeedback(null)}
+            className="text-white/80 hover:text-white font-bold ml-2 text-base"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Quick Action Navigation Bar */}
       <nav aria-label="Owner Actions" className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-xs">
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`py-2 px-4 rounded-xl font-black text-sm md:text-base transition-all ${
+            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all ${
               activeTab === 'overview'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 font-bold'
@@ -270,19 +367,39 @@ export const OwnerDashboard: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setActiveTab('bills')}
-            className={`py-2 px-4 rounded-xl font-black text-sm md:text-base transition-all ${
+            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-1.5 ${
               activeTab === 'bills'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 font-bold'
             }`}
           >
-            {t('allBills')} ({bills.length})
+            <span>{t('allBills')} ({bills.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('delete_requests')}
+            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              activeTab === 'delete_requests'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'text-rose-700 hover:bg-rose-50 border border-rose-200 font-bold'
+            }`}
+          >
+            <span>{t('deleteRequests')}</span>
+            {pendingDeleteBills.length > 0 && (
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full font-black animate-pulse ${
+                  activeTab === 'delete_requests' ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'
+                }`}
+              >
+                {pendingDeleteBills.length}
+              </span>
+            )}
           </button>
         </div>
 
         {/* Date Selector */}
-        <div className="flex items-center gap-1.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-300 text-xs md:text-sm font-black">
-          <Calendar className="w-4 h-4 text-blue-600" />
+        <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-300 text-xs md:text-sm font-black shrink-0 ml-2">
+          <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
           <input
             type="date"
             value={selectedDate}
@@ -294,9 +411,9 @@ export const OwnerDashboard: React.FC<Props> = ({
 
       {/* Notifications Drawer */}
       {showNotificationsDrawer && (
-        <div className="bg-amber-50 border-b border-amber-200 p-4 space-y-2.5 max-h-56 overflow-y-auto no-scrollbar shrink-0">
+        <div className="bg-amber-50 border-b border-amber-200 p-4 space-y-2.5 max-h-64 overflow-y-auto no-scrollbar shrink-0">
           <div className="flex items-center justify-between text-sm font-black text-amber-950">
-            <span>Recent Bill Notifications</span>
+            <span>Recent Notifications</span>
             <button
               onClick={() => setShowNotificationsDrawer(false)}
               className="text-slate-400 hover:text-slate-600 p-1 font-bold"
@@ -310,17 +427,40 @@ export const OwnerDashboard: React.FC<Props> = ({
             notifications.map((n) => (
               <div
                 key={n.notificationId}
-                className="bg-white p-3 rounded-xl border border-amber-200 text-sm flex items-center justify-between shadow-xs"
+                className={`p-3 rounded-xl border text-sm flex items-center justify-between shadow-xs ${
+                  n.type === 'delete_request'
+                    ? 'bg-rose-50 border-rose-200'
+                    : 'bg-white border-amber-200'
+                }`}
               >
                 <div>
-                  <div className="font-black text-slate-900">
-                    {t('billNo')} #{n.billNumber} • {n.eggQuantity} {t('eggs')}
+                  <div className="font-black text-slate-900 flex items-center gap-1.5">
+                    {n.type === 'delete_request' && (
+                      <span className="text-[10px] bg-rose-600 text-white px-1.5 py-0.5 rounded-md uppercase font-black">
+                        {isTamil ? 'நீக்குதல் கோரிக்கை' : 'Delete Req'}
+                      </span>
+                    )}
+                    <span>{t('billNo')} #{n.billNumber} • {n.eggQuantity} {t('eggs')}</span>
                   </div>
-                  <div className="text-xs font-medium text-slate-500">
+                  <div className="text-xs font-medium text-slate-600">
                     {n.time} • {t('staff')}: {n.employeeName}
+                    {n.reason && <span className="italic text-rose-700"> • "{n.reason}"</span>}
                   </div>
                 </div>
-                <div className="font-black text-base text-blue-700">{formatIndianCurrency(n.totalAmount)}</div>
+                <div className="text-right">
+                  <div className="font-black text-base text-blue-700">{formatIndianCurrency(n.totalAmount)}</div>
+                  {n.type === 'delete_request' && (
+                    <button
+                      onClick={() => {
+                        setShowNotificationsDrawer(false);
+                        setActiveTab('bills');
+                      }}
+                      className="text-xs text-rose-700 font-black underline hover:text-rose-900"
+                    >
+                      {isTamil ? 'மதிப்பாய்வு' : 'Review'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -482,46 +622,104 @@ export const OwnerDashboard: React.FC<Props> = ({
               filteredBills.map((b) => (
                 <div
                   key={b.billId}
-                  className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs flex items-center justify-between hover:border-blue-300 transition-all"
+                  className={`bg-white rounded-2xl p-4 border-2 shadow-xs transition-all space-y-3 ${
+                    b.deleteRequest?.status === 'pending'
+                      ? 'border-rose-400 bg-rose-50/30 ring-2 ring-rose-200'
+                      : 'border-slate-200 hover:border-blue-300'
+                  }`}
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-mono font-black text-sm md:text-base text-blue-900">
-                        {t('billNo')} #{b.billNumber}
-                      </span>
-                      <span
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-black ${
-                          b.syncStatus === 'synced'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {b.syncStatus === 'synced' ? t('synced') : t('offline')}
-                      </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-black text-sm md:text-base text-blue-900">
+                          {t('billNo')} #{b.billNumber}
+                        </span>
+                        <span
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-black ${
+                            b.syncStatus === 'synced'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {b.syncStatus === 'synced' ? t('synced') : t('offline')}
+                        </span>
+                        {b.deleteRequest?.status === 'pending' && (
+                          <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-rose-600 text-white animate-pulse">
+                            ⚠️ {isTamil ? 'நீக்குதல் கோரிக்கை' : 'Delete Requested'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm font-bold text-slate-700">
+                        <span>{b.eggQuantity} {t('eggs')}</span>
+                        <span className="text-slate-400"> • </span>
+                        <span>₹{b.pricePerEgg}{t('perEgg')}</span>
+                      </div>
+                      <div className="text-xs md:text-sm font-bold text-slate-500">
+                        {b.time} • {t('profit')}: ₹{b.profit} • {t('staff')}: {b.employeeName}
+                      </div>
                     </div>
-                    <div className="text-sm font-bold text-slate-700">
-                      <span>{b.eggQuantity} {t('eggs')}</span>
-                      <span className="text-slate-400"> • </span>
-                      <span>₹{b.pricePerEgg}{t('perEgg')}</span>
-                    </div>
-                    <div className="text-xs md:text-sm font-bold text-slate-500">
-                      {b.time} • {t('profit')}: ₹{b.profit}
+
+                    <div className="text-right space-y-2 shrink-0">
+                      <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
+                        ₹{b.totalAmount}
+                      </div>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setActiveReceiptBill(b)}
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs md:text-sm font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
+                          title={t('receiptPreview')}
+                        >
+                          <Printer className="w-4 h-4" />
+                          <span>{t('receiptPreview')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBillToOwnerDelete(b)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs md:text-sm font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-rose-200 active:scale-95 transition-all"
+                          title={t('deleteBill')}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>{t('delete')}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-right space-y-2">
-                    <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
-                      ₹{b.totalAmount}
+                  {/* Delete Request Approval Banner for Owner */}
+                  {b.deleteRequest?.status === 'pending' && (
+                    <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="text-xs font-bold text-rose-900 space-y-0.5">
+                        <div className="flex items-center gap-1.5 font-black text-rose-800 uppercase tracking-tight">
+                          <AlertTriangle className="w-4 h-4 text-rose-600" />
+                          <span>
+                            {isTamil ? 'நீக்குதல் கோரிக்கை (ஊழியர்):' : 'Delete Request from Staff:'}{' '}
+                            <span className="underline">{b.deleteRequest.requestedBy}</span>
+                          </span>
+                        </div>
+                        <p className="text-rose-950 font-medium italic">
+                          "{b.deleteRequest.reason}"
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleApproveDelete(b)}
+                          className="bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-xs active:scale-95 transition-all"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>{t('approveAndDelete')}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectDelete(b)}
+                          className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-black text-xs px-2.5 py-1.5 rounded-xl active:scale-95 transition-all"
+                        >
+                          <span>{t('rejectRequest')}</span>
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveReceiptBill(b)}
-                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs md:text-sm font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-blue-200 active:scale-95 transition-all"
-                    >
-                      <Printer className="w-4 h-4" />
-                      <span>{t('receiptPreview')}</span>
-                    </button>
-                  </div>
+                  )}
                 </div>
               ))
             )}
@@ -529,7 +727,182 @@ export const OwnerDashboard: React.FC<Props> = ({
         </div>
       )}
 
-      {/* MODALS */}
+      {/* DELETE REQUESTS REVIEW TAB (Revise delete requests from employees) */}
+      {activeTab === 'delete_requests' && (
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
+          {/* Header & Stats Banner */}
+          <div className="bg-gradient-to-r from-rose-700 via-rose-800 to-rose-950 text-white rounded-3xl p-4 md:p-5 shadow-md space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-amber-300" />
+              </div>
+              <div>
+                <h2 className="text-base md:text-lg font-black uppercase tracking-tight">
+                  {t('reviewDeleteRequestsTitle')}
+                </h2>
+                <p className="text-xs text-rose-200 font-bold">
+                  {isTamil
+                    ? 'பணியாளர்கள் அனுப்பிய நீக்குதல் கோரிக்கைகளை ஆய்வு செய்து அங்கீகரிக்கவும்'
+                    : 'Review and approve or reject deletion requests submitted by employees'}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <div className="bg-white/10 rounded-2xl p-2.5 backdrop-blur-xs border border-white/15">
+                <div className="text-[10px] md:text-xs font-bold text-rose-200 uppercase">
+                  {isTamil ? 'நிலுவை' : 'Pending'}
+                </div>
+                <div className="text-lg md:text-xl font-black font-mono">
+                  {pendingDeleteBills.length}
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-2.5 backdrop-blur-xs border border-white/15">
+                <div className="text-[10px] md:text-xs font-bold text-rose-200 uppercase">
+                  {isTamil ? 'மீளப்பெறும் முட்டை' : 'Eggs to Return'}
+                </div>
+                <div className="text-lg md:text-xl font-black font-mono">
+                  +{totalPendingEggs}
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-2.5 backdrop-blur-xs border border-white/15">
+                <div className="text-[10px] md:text-xs font-bold text-rose-200 uppercase">
+                  {isTamil ? 'மொத்த மதிப்பு' : 'Total Value'}
+                </div>
+                <div className="text-lg md:text-xl font-black font-mono">
+                  ₹{Math.round(totalPendingAmount).toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Delete Requests Cards */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-500 px-1">
+              <span>{t('pendingRequests')} ({pendingDeleteBills.length})</span>
+            </div>
+
+            {pendingDeleteBills.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 text-center border-2 border-slate-200 text-slate-500 space-y-2 shadow-xs">
+                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xs">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <p className="text-base font-black text-slate-800">{t('noPendingDeleteRequests')}</p>
+                <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto">
+                  {t('allClearDesc')}
+                </p>
+              </div>
+            ) : (
+              pendingDeleteBills.map((b) => (
+                <div
+                  key={b.billId}
+                  className="bg-white rounded-2xl p-4 border-2 border-rose-300 shadow-md space-y-3 ring-2 ring-rose-100"
+                >
+                  {/* Top Bar with Bill # and Employee */}
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2.5">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-base md:text-lg text-blue-900">
+                          {t('billNo')} #{b.billNumber}
+                        </span>
+                        <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-rose-600 text-white animate-pulse">
+                          ⚠️ {isTamil ? 'அனுமதி கோரப்பட்டுள்ளது' : 'Pending Approval'}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-slate-500 mt-1">
+                        {b.time} ({b.date}) • {t('requestedBy')}:{' '}
+                        <span className="text-slate-900 font-black">
+                          {b.deleteRequest?.requestedBy || b.employeeName}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-xl font-black text-slate-900 font-mono">
+                        ₹{b.totalAmount}
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-500">
+                        {b.eggQuantity} {t('eggs')} @ ₹{b.pricePerEgg}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Stock impact note */}
+                  <div className="bg-amber-50 rounded-xl p-2.5 border border-amber-200 flex items-center justify-between text-xs font-bold text-amber-900">
+                    <span className="flex items-center gap-1.5">
+                      <Egg className="w-4 h-4 text-amber-600" />
+                      <span>{isTamil ? 'ஒப்புதல் அளித்தால் இருப்புக்கு திரும்பும்:' : 'Stock to be restored on approval:'}</span>
+                    </span>
+                    <span className="font-mono font-black text-amber-950">+{b.eggQuantity} {t('eggs')}</span>
+                  </div>
+
+                  {/* Action Buttons for this request */}
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveReceiptBill(b)}
+                      className="py-2.5 px-2 sm:px-3 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-black text-xs uppercase flex items-center justify-center gap-1 active:scale-95 transition-all"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>{t('receiptPreview')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRejectDelete(b)}
+                      className="py-2.5 px-2 sm:px-3 rounded-xl border-2 border-slate-300 hover:bg-slate-100 text-slate-700 font-black text-xs uppercase flex items-center justify-center gap-1 active:scale-95 transition-all"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{t('rejectRequest')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleApproveDelete(b)}
+                      className="py-2.5 px-2 sm:px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase shadow-md flex items-center justify-center gap-1 active:scale-95 transition-all"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>{t('approveAndDelete')}</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Past Reviewed / Rejected Requests */}
+          {rejectedDeleteBills.length > 0 && (
+            <div className="space-y-2 pt-3">
+              <div className="text-xs font-black uppercase tracking-wider text-slate-500 px-1">
+                {isTamil ? 'நிராகரிக்கப்பட்ட கோரிக்கைகள்' : 'Rejected Requests (Bill Kept Active)'} ({rejectedDeleteBills.length})
+              </div>
+              <div className="space-y-2">
+                {rejectedDeleteBills.map((b) => (
+                  <div
+                    key={b.billId}
+                    className="bg-white rounded-2xl p-3 border border-slate-200 text-xs flex items-center justify-between opacity-80"
+                  >
+                    <div>
+                      <div className="font-black text-slate-900">
+                        {t('billNo')} #{b.billNumber} • {b.eggQuantity} {t('eggs')}
+                      </div>
+                      <div className="text-slate-500 text-[11px]">
+                        {b.time} • {t('staff')}: {b.employeeName}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="bg-slate-100 text-slate-600 font-black text-[10px] px-2 py-0.5 rounded-full border border-slate-200">
+                        {isTamil ? 'நிராகரிக்கப்பட்டது' : 'Rejected'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       {showPriceModal && (
         <DailyPriceModal
           currentPrice={todayPrice}
@@ -574,6 +947,63 @@ export const OwnerDashboard: React.FC<Props> = ({
             setShowPrinterModal(true);
           }}
         />
+      )}
+
+      {/* Owner Direct Delete Confirmation Modal */}
+      {billToOwnerDelete && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border-2 border-slate-200 overflow-hidden flex flex-col">
+            <div className="bg-rose-600 text-white p-4 flex items-center gap-2.5">
+              <AlertTriangle className="w-6 h-6 shrink-0" />
+              <div>
+                <h3 className="font-black text-base uppercase tracking-tight">
+                  {t('deleteBillPermanently')}
+                </h3>
+                <p className="text-xs text-rose-100 font-bold">
+                  {t('billNo')} #{billToOwnerDelete.billNumber}
+                </p>
+              </div>
+            </div>
+            <div className="p-4 space-y-3 font-mono">
+              <p className="text-xs font-bold text-slate-700">
+                {t('deleteBillConfirmDesc')}
+              </p>
+              <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 text-xs space-y-1 font-bold">
+                <div className="flex justify-between">
+                  <span className="text-slate-600">{t('eggQuantity')}:</span>
+                  <span className="font-black text-rose-700">
+                    +{billToOwnerDelete.eggQuantity} {t('eggs')} (return to stock)
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">{t('total')}:</span>
+                  <span className="font-black text-slate-900">₹{billToOwnerDelete.totalAmount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-600">{t('staff')}:</span>
+                  <span className="font-black text-slate-900">{billToOwnerDelete.employeeName}</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBillToOwnerDelete(null)}
+                  className="py-2.5 px-3 rounded-xl border-2 border-slate-300 text-slate-700 font-black text-xs uppercase hover:bg-slate-100 transition-all active:scale-95"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOwnerConfirmDelete}
+                  className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>{t('delete')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
