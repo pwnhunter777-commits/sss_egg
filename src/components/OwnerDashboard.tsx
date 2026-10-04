@@ -139,8 +139,11 @@ export const OwnerDashboard: React.FC<Props> = ({
   const remainingStock = Math.max(0, openingStock - totalEggsSold);
 
   // Profit Calculation: Profit = Total Sales - Cost of Eggs Sold
-  // Purchase cost is taken from today's pricing or stock
-  const currentPurchaseCost = todayPrice?.purchaseCost ?? todayStock?.purchaseCost ?? 2;
+  // Purchase cost is taken from today's stock purchase price
+  const currentPurchaseCost =
+    (todayStock?.purchaseCost && todayStock.purchaseCost > 0)
+      ? todayStock.purchaseCost
+      : ((todayPrice?.purchaseCost && todayPrice.purchaseCost > 0) ? todayPrice.purchaseCost : 0);
   const costOfEggsSold = totalEggsSold * currentPurchaseCost;
   const totalProfit = Math.max(0, totalSales - costOfEggsSold);
 
@@ -336,7 +339,11 @@ export const OwnerDashboard: React.FC<Props> = ({
             >
               <div>
                 <div className="text-sm md:text-base font-black text-slate-900">{t('setPrice')}</div>
-                <div className="text-xs font-bold text-slate-500">₹{todayPrice?.pricePerEgg ?? 3} {t('perEgg')}</div>
+                <div className="text-xs font-bold text-slate-500">
+                  {todayPrice && todayPrice.pricePer30Eggs > 0
+                    ? `₹${todayPrice.pricePer30Eggs} / 1 ${isTamil ? 'தாரா' : 'Tara'}`
+                    : `₹0 (${isTamil ? 'தாரா விலை அமைக்கவும்' : 'Set 1 Tara Price'})`}
+                </div>
               </div>
             </button>
 

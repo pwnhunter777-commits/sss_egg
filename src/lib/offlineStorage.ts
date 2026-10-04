@@ -68,11 +68,12 @@ export function saveLocalBill(bill: Bill): void {
     }
     localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(bills));
 
-    // Update last bill number
-    if (bill.billNumber) {
-      const currentLast = getNextBillNumber() - 1;
-      if (bill.billNumber > currentLast) {
-        localStorage.setItem(STORAGE_KEYS.LAST_BILL_NUMBER, String(bill.billNumber));
+    // Update last bill number for this specific day
+    if (bill.billNumber && bill.date) {
+      const dayKey = `sss_last_bill_number_${bill.date}`;
+      const currentStored = parseInt(localStorage.getItem(dayKey) || '0', 10);
+      if (bill.billNumber > currentStored) {
+        localStorage.setItem(dayKey, String(bill.billNumber));
       }
     }
 
@@ -117,18 +118,22 @@ export function markBillSyncedLocally(billId: string): void {
   }
 }
 
-export function getNextBillNumber(): number {
+/**
+ * Gets the next bill number for a specific date (restarts at 1001 every new day)
+ */
+export function getNextBillNumber(date: string = getTodayDateString()): number {
   try {
-    const stored = localStorage.getItem(STORAGE_KEYS.LAST_BILL_NUMBER);
+    const dayKey = `sss_last_bill_number_${date}`;
+    const stored = localStorage.getItem(dayKey);
     if (stored) {
       return parseInt(stored, 10) + 1;
     }
-    const bills = getLocalBills();
-    if (bills.length > 0) {
-      const maxNo = Math.max(...bills.map((b) => b.billNumber || 1000));
+    const todayBills = getLocalBills().filter((b) => b.date === date);
+    if (todayBills.length > 0) {
+      const maxNo = Math.max(...todayBills.map((b) => b.billNumber || 1000));
       return maxNo + 1;
     }
-    return 1001;
+    return 1001; // Starts at 1001 each day
   } catch {
     return 1001;
   }
@@ -298,7 +303,7 @@ export function clearLocalActiveSession(): void {
   }
 }
 
-// Daily Data Lifecycle
+// Daily Data Lifecycle & Automatic Purge
 export function getLastActiveDate(): string | null {
   try {
     return localStorage.getItem(STORAGE_KEYS.LAST_ACTIVE_DATE);
@@ -315,6 +320,69 @@ export function setLastActiveDate(date: string): void {
   }
 }
 
+/**
+ * Cleans up past days' operational data from local phone memory.
+ * Retains only today's records so the phone operates fast, light, and with clean daily numbers.
+ */
+export function purgeOldDaysLocalData(currentDate: string = getTodayDateString()): void {
+  try {
+    // 1. Filter out bills from past days
+    const allBills = getLocalBills();
+    const todayBills = allBills.filter((b) => b.date === currentDate);
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(todayBills));
+
+    // 2. Filter out notifications from past days
+    const allNotifs = getLocalNotifications();
+    const todayNotifs = allNotifs.filter((n) => n.date === currentDate);
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(todayNotifs));
+
+    // 3. Clean up old date keys (price, stock, bill numbers)
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        if (
+          (key.startsWith('sss_price_') && !key.endsWith(currentDate)) ||
+          (key.startsWith('sss_stock_') && !key.endsWith(currentDate)) ||
+          (key.startsWith('sss_last_bill_number_') && !key.endsWith(currentDate))
+        ) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch (e) {
+    console.error('Failed to purge old days local data', e);
+  }
+}
+
+/**
+ * Clears today's local operational records and restarts counters at zero
+ */
+export function clearAllTodayLocalData(currentDate: string = getTodayDateString()): void {
+  try {
+    // 1. Remove today's bills from local storage
+    const allBills = getLocalBills();
+    const remaining = allBills.filter((b) => b.date !== currentDate);
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(remaining));
+
+    // 2. Remove today's notifications
+    const allNotifs = getLocalNotifications();
+    const notifsRemaining = allNotifs.filter((n) => n.date !== currentDate);
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifsRemaining));
+
+    // 3. Clear today's bill number counter so next bill starts at #1001
+    localStorage.removeItem(`sss_last_bill_number_${currentDate}`);
+    localStorage.removeItem(STORAGE_KEYS.LAST_BILL_NUMBER);
+
+    // 4. Clear today's stock & price cache
+    localStorage.removeItem(`sss_stock_${currentDate}`);
+    localStorage.removeItem(`sss_price_${currentDate}`);
+  } catch (e) {
+    console.error('Failed to clear today local data', e);
+  }
+}
+
 export function resetAllLocalData(): void {
   try {
     localStorage.removeItem(STORAGE_KEYS.BILLS);
@@ -327,7 +395,12 @@ export function resetAllLocalData(): void {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith('sss_price_') || key.startsWith('sss_stock_'))) {
+      if (
+        key &&
+        (key.startsWith('sss_price_') ||
+          key.startsWith('sss_stock_') ||
+          key.startsWith('sss_last_bill_number_'))
+      ) {
         keysToRemove.push(key);
       }
     }

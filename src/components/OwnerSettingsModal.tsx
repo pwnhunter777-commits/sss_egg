@@ -31,18 +31,26 @@ export const OwnerSettingsModal: React.FC<Props> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleManualDailyReset = async () => {
-    if (!window.confirm("Are you sure you want to wipe all records and restart the database fresh for today?")) {
+    const confirmText = isTamil
+      ? 'இன்றைய அனைத்து தரவுகளையும் அழித்து, புதிய நாளாக 0 இல் இருந்து தொடங்க வேண்டுமா?'
+      : 'Are you sure you want to clear all data and restart fresh from zero for today?';
+    if (!window.confirm(confirmText)) {
       return;
     }
     setIsResetting(true);
-    setStatusMsg('Clearing database and restarting app...');
+    setStatusMsg(
+      isTamil
+        ? 'தரவுத்தளம் மற்றும் போன் நினைவகம் அழிக்கப்பட்டு மீண்டும் தொடங்குகிறது...'
+        : 'Clearing database and local storage, restarting fresh...'
+    );
     try {
-      await EggAgencyService.clearAllDatabaseData();
-      resetAllLocalData();
-      setLastActiveDate(getTodayDateString());
-      window.location.reload();
+      await EggAgencyService.clearTodayDataAndRestart(getTodayDateString());
+      setStatusMsg(isTamil ? 'வெற்றி! புதிய நாள் தொடங்கியது.' : 'Success! Day restarted fresh.');
+      setTimeout(() => {
+        window.location.reload();
+      }, 600);
     } catch (err: any) {
-      setErrorMsg('Failed to reset: ' + err.message);
+      setErrorMsg('Failed to reset: ' + (err?.message || String(err)));
       setIsResetting(false);
     }
   };

@@ -230,8 +230,8 @@ export const translations: Record<Language, Translations> = {
     // Modals & Forms
     setDailyPriceTitle: "Set Today's Selling Price",
     pricePerEggLabel: 'Price per Egg (₹)',
-    pricePer30Label: 'Price for 30 Eggs / Tray (₹)',
-    purchaseCostLabel: 'Purchase Cost per Egg (₹)',
+    pricePer30Label: 'Price for 30 Eggs / 1 Tara (Tray) (₹)',
+    purchaseCostLabel: 'Purchase Cost for 30 Eggs / 1 Tara (Tray) (₹)',
     saveAndLockPrice: 'Save & Lock Today Price',
     priceUpdatedSuccess: 'Price updated and locked for today!',
 
@@ -359,8 +359,8 @@ export const translations: Record<Language, Translations> = {
     // Modals & Forms
     setDailyPriceTitle: 'இன்றைய விற்பனை விலை நிர்ணயம்',
     pricePerEggLabel: 'ஒரு முட்டை விலை (₹)',
-    pricePer30Label: '30 முட்டை (ஒரு தட்டு) விலை (₹)',
-    purchaseCostLabel: 'வாங்கிய விலை அடக்கம் / முட்டை (₹)',
+    pricePer30Label: '30 முட்டை விலை / 1 தாரா (தட்டு) (₹)',
+    purchaseCostLabel: '30 முட்டை / 1 தாரா வாங்கிய அடக்க விலை (₹)',
     saveAndLockPrice: 'விலையை சேமித்து பூட்டுக',
     priceUpdatedSuccess: 'இன்றைய விலை வெற்றிகரமாக மாற்றப்பட்டது!',
 

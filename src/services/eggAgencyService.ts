@@ -31,6 +31,8 @@ import {
   setLocalSettings,
   getLocalNotifications,
   addLocalNotification,
+  purgeOldDaysLocalData,
+  clearAllTodayLocalData,
 } from '../lib/offlineStorage';
 
 export const EggAgencyService = {
@@ -57,12 +59,12 @@ export const EggAgencyService = {
       console.warn('Network unavailable, using default price', err);
     }
 
-    // Default if not yet set for today: 1 egg = ₹3, 30 eggs = ₹90, purchase = ₹2
+    // Everyday restarts with 0 price until owner sets today's 1 Tara (30 eggs) price
     const defaultPrice: DailyPrice = {
       date,
-      pricePerEgg: 3,
-      pricePer30Eggs: 90,
-      purchaseCost: 2,
+      pricePerEgg: 0,
+      pricePer30Eggs: 0,
+      purchaseCost: 0,
       updatedAt: new Date().toISOString(),
     };
     setLocalDailyPrice(defaultPrice);
@@ -103,6 +105,14 @@ export const EggAgencyService = {
   async getTodayStock(date: string = getTodayDateString()): Promise<DailyStock> {
     const local = getLocalDailyStock(date);
     if (local) {
+      // Auto-correct 4000 (which was 3000 default + 1000 entered) to the intended 1000
+      if (local.remainingStock === 4000 && local.eggsSold === 0) {
+        local.openingStock = 1000;
+        local.importedStock = 1000;
+        local.remainingStock = 1000;
+        setLocalDailyStock(local);
+        this.saveTodayStock(local).catch(() => {});
+      }
       this.fetchRemoteStock(date).catch(() => {});
       return local;
     }
@@ -112,6 +122,12 @@ export const EggAgencyService = {
       const snapshot = await getDoc(docRef);
       if (snapshot.exists()) {
         const data = snapshot.data() as DailyStock;
+        if (data.remainingStock === 4000 && data.eggsSold === 0) {
+          data.openingStock = 1000;
+          data.importedStock = 1000;
+          data.remainingStock = 1000;
+          this.saveTodayStock(data).catch(() => {});
+        }
         setLocalDailyStock(data);
         return data;
       }
@@ -119,14 +135,14 @@ export const EggAgencyService = {
       console.warn('Network unavailable, using default stock', err);
     }
 
-    // Default stock for new day (3,000 eggs @ Rs 2 purchase cost)
+    // Everyday restarts with 0 stock until owner imports/adds today's stock
     const defaultStock: DailyStock = {
       date,
-      openingStock: 3000,
-      importedStock: 3000,
+      openingStock: 0,
+      importedStock: 0,
       eggsSold: 0,
-      remainingStock: 3000,
-      purchaseCost: 2,
+      remainingStock: 0,
+      purchaseCost: 0,
       updatedAt: new Date().toISOString(),
     };
     setLocalDailyStock(defaultStock);
@@ -206,7 +222,7 @@ export const EggAgencyService = {
     const costOfEggsSold = eggQuantity * purchaseCostPerEgg;
     const profit = Math.max(0, totalAmount - costOfEggsSold);
 
-    const billNumber = getNextBillNumber();
+    const billNumber = getNextBillNumber(date);
     const billId = `bill_${date}_${billNumber}_${Date.now()}`;
     const currentTimeStr = formatTime(new Date());
 
@@ -374,7 +390,16 @@ export const EggAgencyService = {
 
   subscribeToStock(date: string, onUpdate: (stock: DailyStock | null) => void): () => void {
     const local = getLocalDailyStock(date);
-    if (local) onUpdate(local);
+    if (local) {
+      if (local.remainingStock === 4000 && local.eggsSold === 0) {
+        local.openingStock = 1000;
+        local.importedStock = 1000;
+        local.remainingStock = 1000;
+        setLocalDailyStock(local);
+        this.saveTodayStock(local).catch(() => {});
+      }
+      onUpdate(local);
+    }
 
     try {
       const docRef = doc(db, 'daily_stock', date);
@@ -383,6 +408,12 @@ export const EggAgencyService = {
         (snap) => {
           if (snap.exists()) {
             const data = snap.data() as DailyStock;
+            if (data.remainingStock === 4000 && data.eggsSold === 0) {
+              data.openingStock = 1000;
+              data.importedStock = 1000;
+              data.remainingStock = 1000;
+              EggAgencyService.saveTodayStock(data).catch(() => {});
+            }
             setLocalDailyStock(data);
             onUpdate(data);
           }
@@ -549,6 +580,77 @@ export const EggAgencyService = {
     } catch (err) {
       console.warn('Could not complete past days Firestore purge (offline or network):', err);
     }
+  },
+
+  /**
+   * Daily Restart Procedure:
+   * 1. Cleans up all previous days' operational records from local phone memory.
+   * 2. Purges past days' operational records from the Firestore database.
+   * 3. Initializes today's clean pricing and fresh stock starting from 0 eggs sold.
+   * 4. Ensures today's bills begin fresh at Bill #1001.
+   */
+  async restartDay(currentDate: string = getTodayDateString()): Promise<void> {
+    // 1. Purge phone local storage
+    purgeOldDaysLocalData(currentDate);
+
+    // 2. Purge Firestore database in background
+    await this.purgePastDaysData(currentDate);
+
+    // 3. Ensure today's fresh price is initialized in both DB and local phone
+    const todayPrice = await this.getTodayPrice(currentDate);
+    await this.saveTodayPrice(todayPrice);
+
+    // 4. Ensure today's fresh stock is initialized in both DB and local phone
+    const todayStock = await this.getTodayStock(currentDate);
+    await this.saveTodayStock(todayStock);
+  },
+
+  /**
+   * Manual Day Restart & Data Wipe:
+   * Completely clears today's transactions from both the Firestore database and the phone,
+   * resetting today's sales, eggs sold, profit, bills, and notifications to 0,
+   * and resetting the next bill number to #1001.
+   */
+  async clearTodayDataAndRestart(currentDate: string = getTodayDateString()): Promise<void> {
+    // 1. Clear today from local phone storage
+    clearAllTodayLocalData(currentDate);
+
+    // 2. Clear today's bills & notifications from Firestore
+    try {
+      const billsSnap = await getDocs(query(collection(db, 'bills'), where('date', '==', currentDate)));
+      const bBatch = writeBatch(db);
+      billsSnap.docs.forEach((d) => bBatch.delete(d.ref));
+      if (billsSnap.docs.length > 0) await bBatch.commit();
+
+      const notifSnap = await getDocs(query(collection(db, 'notifications'), where('date', '==', currentDate)));
+      const nBatch = writeBatch(db);
+      notifSnap.docs.forEach((d) => nBatch.delete(d.ref));
+      if (notifSnap.docs.length > 0) await nBatch.commit();
+    } catch (err) {
+      console.warn('Could not clear today remote records:', err);
+    }
+
+    // 3. Re-initialize today's stock to 0 (clean slate)
+    const freshStock: DailyStock = {
+      date: currentDate,
+      openingStock: 0,
+      importedStock: 0,
+      eggsSold: 0,
+      remainingStock: 0,
+      purchaseCost: 0,
+      updatedAt: new Date().toISOString(),
+    };
+    await this.saveTodayStock(freshStock);
+
+    // 4. Re-initialize today's price to 0 (clean slate)
+    const freshPrice: DailyPrice = {
+      date: currentDate,
+      pricePerEgg: 0,
+      pricePer30Eggs: 0,
+      purchaseCost: 0,
+      updatedAt: new Date().toISOString(),
+    };
+    await this.saveTodayPrice(freshPrice);
   },
 
   /**

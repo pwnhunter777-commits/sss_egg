@@ -25,8 +25,8 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isValidDate(dateId)
         && request.resource.data.keys().hasAll(['date', 'pricePerEgg', 'pricePer30Eggs', 'purchaseCost'])
-        && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg > 0
-        && request.resource.data.pricePer30Eggs is number && request.resource.data.pricePer30Eggs > 0
+        && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg >= 0
+        && request.resource.data.pricePer30Eggs is number && request.resource.data.pricePer30Eggs >= 0
         && request.resource.data.purchaseCost is number && request.resource.data.purchaseCost >= 0;
       allow delete: if isValidDate(dateId);
     }

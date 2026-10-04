@@ -7,7 +7,7 @@ import {
   PrinterDevice,
 } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
-import { formatTime, getTodayDateString } from '../lib/offlineStorage';
+import { formatTime, getTodayDateString, getNextBillNumber } from '../lib/offlineStorage';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from './LanguageToggle';
 import { ThermalReceipt } from './ThermalReceipt';
@@ -182,13 +182,26 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
   // Open Draft Receipt Preview (Bill is NOT added to database or owner yet)
   const handleCreateBill = (shouldAutoPrint?: boolean) => {
+    if (pricePer30Eggs <= 0 && pricePerEgg <= 0) {
+      setBillingError(
+        isTamil
+          ? 'இன்றைய தாரா விலை இன்னும் நிர்ணயிக்கப்படவில்லை! உரிமையாளர் முதலில் விலையை நிர்ணயிக்க வேண்டும்.'
+          : "Today's 1 Tara (30 eggs) price has not been set yet! Owner must set today's price first."
+      );
+      return;
+    }
+
     if (eggQuantity <= 0) {
-      setBillingError('Please enter egg quantity');
+      setBillingError(isTamil ? 'முட்டை எண்ணிக்கையை உள்ளிடவும்' : 'Please enter egg quantity');
       return;
     }
 
     if (isStockInsufficient) {
-      setBillingError(`Insufficient stock! Only ${remainingStock} eggs available.`);
+      setBillingError(
+        isTamil
+          ? `கையிருப்பு போதாது! ${remainingStock} முட்டைகள் மட்டுமே உள்ளன.`
+          : `Insufficient stock! Only ${remainingStock} eggs available.`
+      );
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate([100, 50, 100]);
       }
@@ -199,8 +212,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
     playPrintClickSound();
 
     // Generate draft receipt preview
-    const nextBillNum = bills.length > 0 ? Math.max(...bills.map((b) => b.billNumber)) + 1 : 1;
     const date = getTodayDateString();
+    const nextBillNum = getNextBillNumber(date);
     const timeStr = formatTime(new Date());
 
     const draftBill: Bill = {
@@ -385,8 +398,24 @@ export const EmployeeDashboard: React.FC<Props> = ({
               </div>
               <div>
                 <div className="text-xl md:text-2xl font-black text-blue-900 font-mono">
-                  ₹{pricePerEgg} <span className="text-xs font-bold text-slate-500">/ egg</span>
+                  {pricePer30Eggs > 0 ? (
+                    <>
+                      ₹{pricePer30Eggs}{' '}
+                      <span className="text-xs font-bold text-slate-500">
+                        / 1 {isTamil ? 'தாரா' : 'Tara (30 eggs)'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-bold text-amber-600">
+                      {isTamil ? 'தாரா விலை இன்னும் அமைக்கப்படவில்லை' : 'Price not set for today'}
+                    </span>
+                  )}
                 </div>
+                {pricePerEgg > 0 && (
+                  <div className="text-xs font-bold text-slate-500">
+                    ₹{pricePerEgg.toFixed(2)} / egg
+                  </div>
+                )}
               </div>
             </div>
 

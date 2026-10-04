@@ -41,13 +41,14 @@ export default function App() {
     const lastActive = getLastActiveDate();
 
     if (lastActive && lastActive !== today) {
-      // New day started! Purge all previous days' data from Firestore and local storage
-      resetAllLocalData();
-      EggAgencyService.purgePastDaysData(today).catch(() => {});
+      // New day started! Automatically clear all past days' data and restart fresh
+      EggAgencyService.restartDay(today).catch(() => {});
       setLastActiveDate(today);
       setUserRole(null);
     } else {
       setLastActiveDate(today);
+      // Ensure daily clean state & mirror
+      EggAgencyService.restartDay(today).catch(() => {});
       // Check for existing valid 1-day session
       const activeSession = getLocalActiveSession();
       if (activeSession) {
@@ -74,9 +75,8 @@ export default function App() {
       const lastActive = getLastActiveDate();
 
       if (lastActive && lastActive !== today) {
-        // Date changed while open! Purge past data, reset local state, and prompt login
-        resetAllLocalData();
-        EggAgencyService.purgePastDaysData(today).catch(() => {});
+        // Date changed while open (midnight rollover)! Purge past data, reset local state, and restart clean day
+        EggAgencyService.restartDay(today).catch(() => {});
         setLastActiveDate(today);
         setUserRole(null);
         return;

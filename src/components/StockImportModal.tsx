@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DailyStock } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { getTodayDateString } from '../lib/offlineStorage';
-import { PackagePlus, Check, X, AlertCircle } from 'lucide-react';
+import { Check, X, AlertCircle, TrendingUp } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
@@ -16,65 +16,86 @@ export const StockImportModal: React.FC<Props> = ({
   onStockUpdated,
   onClose,
 }) => {
-  const { t } = useLanguage();
+  const { t, isTamil } = useLanguage();
   const todayStr = getTodayDateString();
 
-  const [stockQuantityStr, setStockQuantityStr] = useState<string>('3000');
-  const [purchaseCostStr, setPurchaseCostStr] = useState<string>(
-    String(currentStock?.purchaseCost ?? 2)
-  );
+  // Everyday starts at 0 (or existing stock if already set)
+  const initialStockStr = currentStock?.remainingStock ? String(currentStock.remainingStock) : '0';
+  const [stockQuantityStr, setStockQuantityStr] = useState<string>(initialStockStr);
+
+  // Stock Purchase Price for 30 Eggs / 1 Tara (used for profit calculation)
+  const initial30Price = currentStock?.purchaseCost && currentStock.purchaseCost > 0
+    ? String(Math.round(currentStock.purchaseCost * 30))
+    : '0';
+  const [pricePer30Str, setPricePer30Str] = useState<string>(initial30Price);
+
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const stockQuantity = parseInt(stockQuantityStr, 10) || 0;
-  const purchaseCost = parseFloat(purchaseCostStr) || 0;
-
-  const quickStockChips = [500, 1000, 2000, 3000, 5000];
-  const totalPurchaseCost = stockQuantity * purchaseCost;
+  const num30Price = parseFloat(pricePer30Str) || 0;
+  const currentEggsSold = currentStock?.eggsSold ?? 0;
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (stockQuantity <= 0) {
-      setErrorMsg('Imported quantity must be greater than 0');
+      setErrorMsg(
+        isTamil
+          ? 'முட்டை எண்ணிக்கையை உள்ளிடவும் (0 விட அதிகமாக)'
+          : 'Egg quantity must be greater than 0'
+      );
       return;
     }
-    if (purchaseCost < 0) {
-      setErrorMsg('Purchase cost cannot be negative');
+    if (num30Price < 0) {
+      setErrorMsg(
+        isTamil ? 'விலை 0 அல்லது அதிகமாக இருக்க வேண்டும்' : 'Price cannot be negative'
+      );
       return;
     }
 
     setIsSaving(true);
     setErrorMsg(null);
 
-    const currentEggsSold = currentStock?.eggsSold ?? 0;
-    const currentOpening = currentStock?.openingStock ?? 0;
-    const currentImported = currentStock?.importedStock ?? 0;
-    const currentRemaining = currentStock?.remainingStock ?? 0;
+    // Stock cost per egg for profit calculation
+    const calculatedCostPerEgg = num30Price > 0 ? parseFloat((num30Price / 30).toFixed(2)) : 0;
 
-    const newOpeningStock = currentOpening > 0 ? currentOpening + stockQuantity : stockQuantity;
-    const newImportedStock = currentImported > 0 ? currentImported + stockQuantity : stockQuantity;
-    const newRemainingStock = currentOpening > 0 ? currentRemaining + stockQuantity : stockQuantity - currentEggsSold;
+    // Directly sets today's stock to the entered quantity
+    const newOpeningStock = stockQuantity + currentEggsSold;
+    const newImportedStock = stockQuantity;
+    const newRemainingStock = Math.max(0, stockQuantity - currentEggsSold);
 
     const updatedStock: DailyStock = {
       date: todayStr,
       openingStock: newOpeningStock,
       importedStock: newImportedStock,
       eggsSold: currentEggsSold,
-      remainingStock: Math.max(0, newRemainingStock),
-      purchaseCost,
+      remainingStock: newRemainingStock,
+      purchaseCost: calculatedCostPerEgg,
       updatedAt: new Date().toISOString(),
     };
 
     try {
       await EggAgencyService.saveTodayStock(updatedStock);
       onStockUpdated(updatedStock);
+
+      // Save purchase cost into today's price as well so profit calculations use it immediately
+      if (calculatedCostPerEgg > 0) {
+        const todayPriceDoc = await EggAgencyService.getTodayPrice(todayStr);
+        if (todayPriceDoc) {
+          await EggAgencyService.saveTodayPrice({
+            ...todayPriceDoc,
+            purchaseCost: calculatedCostPerEgg,
+          });
+        }
+      }
+
       setSuccessMsg(t('stockUpdatedSuccess'));
       setTimeout(() => {
         onClose();
       }, 700);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to import stock');
+      setErrorMsg(err.message || 'Failed to update stock');
     } finally {
       setIsSaving(false);
     }
@@ -85,9 +106,7 @@ export const StockImportModal: React.FC<Props> = ({
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
-          <div>
-            <h3 className="font-black text-base md:text-lg">{t('stockImportTitle')}</h3>
-          </div>
+          <h3 className="font-black text-base md:text-lg">{t('stockImportTitle')}</h3>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full hover:bg-blue-700 text-blue-100 transition-colors"
@@ -97,7 +116,7 @@ export const StockImportModal: React.FC<Props> = ({
         </div>
 
         <form onSubmit={handleImport} className="p-5 space-y-4">
-          {/* Stock Imported Input */}
+          {/* Stock Input */}
           <div className="space-y-1.5">
             <label className="text-sm font-black text-slate-800 block">
               <span>{t('addQuantityLabel')}</span>
@@ -105,76 +124,64 @@ export const StockImportModal: React.FC<Props> = ({
             <div className="relative">
               <input
                 type="number"
-                min="1"
+                min="0"
                 step="any"
                 value={stockQuantityStr}
                 onChange={(e) => {
                   setStockQuantityStr(e.target.value);
                   setErrorMsg(null);
                 }}
-                placeholder="3000"
-                className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 text-2xl font-black text-slate-900 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                placeholder="0"
+                className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 text-3xl font-black text-slate-900 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                autoFocus
               />
-            </div>
-
-            {/* Quick stock chips */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {quickStockChips.map((chip) => (
-                <button
-                  key={chip}
-                  type="button"
-                  onClick={() => {
-                    setStockQuantityStr(String(chip));
-                    setErrorMsg(null);
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs md:text-sm font-black transition-all ${
-                    stockQuantity === chip
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                  }`}
-                >
-                  +{chip}
-                </button>
-              ))}
             </div>
           </div>
 
-          {/* Purchase Cost / Egg */}
+          {/* Stock Purchase Price for 30 Eggs / 1 Tara (Used for Profit Calculation) */}
           <div className="space-y-1.5">
-            <label className="text-sm font-black text-slate-800 block">
-              <span>{t('purchaseCostLabel')}</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-black text-slate-800 block">
+                <span>
+                  {isTamil
+                    ? 'கொள்முதல் அடக்க விலை (30 முட்டை / 1 தாரா)'
+                    : 'Stock Purchase Price (30 Eggs / 1 Tara)'}
+                </span>
+              </label>
+              <span className="text-[11px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" />
+                {isTamil ? 'லாபம் கணக்கிட' : 'For Profit'}
+              </span>
+            </div>
+
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 font-black text-lg">
                 ₹
               </span>
               <input
                 type="number"
                 step="any"
                 min="0"
-                value={purchaseCostStr}
+                value={pricePer30Str}
                 onChange={(e) => {
-                  setPurchaseCostStr(e.target.value);
+                  setPricePer30Str(e.target.value);
                   setErrorMsg(null);
                 }}
-                placeholder="2.00"
-                className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl pl-9 pr-4 py-2.5 text-xl font-black text-slate-900 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                placeholder="0"
+                className="w-full bg-emerald-50/30 border-2 border-emerald-300 focus:border-emerald-500 rounded-2xl pl-9 pr-4 py-3 text-2xl font-black text-emerald-950 font-mono focus:ring-2 focus:ring-emerald-400 focus:outline-hidden"
               />
             </div>
-          </div>
 
-          {/* Total Purchase Cost Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                {t('total')}
-              </div>
-              <div className="text-sm font-bold text-slate-600">
-                {stockQuantity} {t('eggs')} × ₹{purchaseCost}
-              </div>
-            </div>
-            <div className="text-2xl font-black text-slate-900 font-mono">
-              ₹{totalPurchaseCost.toLocaleString('en-IN')}
+            {/* Helper: Profit calculation indicator & 1-egg equivalent */}
+            <div className="flex items-center justify-between text-xs font-bold pt-0.5 px-1">
+              <span className="text-emerald-700">
+                {isTamil ? 'விற்பனை லாபம் கணக்கிட பயன்படும்' : 'Used to calculate today’s profit'}
+              </span>
+              {num30Price > 0 && (
+                <span className="text-slate-600 font-mono">
+                  (₹{(num30Price / 30).toFixed(2)} / egg)
+                </span>
+              )}
             </div>
           </div>
 
@@ -192,21 +199,13 @@ export const StockImportModal: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="pt-2 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-sm py-3.5 px-4 rounded-2xl transition-all"
-            >
-              {t('cancel')}
-            </button>
+          {/* Action Button */}
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 bg-blue-700 hover:bg-blue-800 text-white font-black text-sm py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25"
+              className="w-full bg-blue-700 hover:bg-blue-800 text-white font-black text-base py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.98]"
             >
-              <PackagePlus className="w-5 h-5" />
               <span>{isSaving ? t('loading') : t('saveStockButton')}</span>
             </button>
           </div>

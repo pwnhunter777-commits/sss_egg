@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { UserRole, AgencySettings } from '../types';
 import { playPrintClickSound } from '../lib/soundNotification';
-import { Delete, KeyRound, AlertTriangle, Egg } from 'lucide-react';
-import { useLanguage } from '../context/LanguageContext';
-import { LanguageToggle } from './LanguageToggle';
+import { Delete, AlertTriangle, Egg } from 'lucide-react';
 
 interface Props {
   settings: AgencySettings;
@@ -11,7 +9,6 @@ interface Props {
 }
 
 export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
-  const { t, isTamil } = useLanguage();
   const [selectedRole, setSelectedRole] = useState<'owner' | 'employee'>('owner');
   const [pin, setPin] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -55,7 +52,7 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
     } else {
       // Error
       setIsShaking(true);
-      setErrorMsg(t('incorrectPin'));
+      setErrorMsg('Incorrect PIN! Please try again.');
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate([100, 50, 100]);
       }
@@ -74,29 +71,24 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
 
   return (
     <div className="flex-1 flex flex-col justify-between p-6 md:p-8 bg-gradient-to-b from-blue-900 via-blue-800 to-slate-900 text-white select-none min-h-[90vh]">
-      {/* Top Header with Language Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="w-10" />
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl mb-1">
-            <Egg className="w-10 h-10 text-amber-300 drop-shadow-md" />
-          </div>
-        </div>
-        <div>
-          <LanguageToggle variant="dark" />
+      {/* Top Header */}
+      <div className="flex items-center justify-center pt-2">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl mb-1">
+          <Egg className="w-10 h-10 text-amber-300 drop-shadow-md" />
         </div>
       </div>
 
       <div className="text-center space-y-1">
-        <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase text-white drop-shadow-md">
-          {isTamil && settings.agencyName === 'SSS EGG AGENCY'
-            ? t('agencyNameDefault')
-            : settings.agencyName || t('agencyNameDefault')}
+        <h1 className="text-2xl md:text-3xl font-black tracking-tight uppercase text-white drop-shadow-md font-sans">
+          {settings.agencyName || 'SSS EGG AGENCY'}
         </h1>
+        <p className="text-xs md:text-sm font-bold text-blue-200">
+          Billing & Stock Management
+        </p>
       </div>
 
-      {/* Role Selection Tabs */}
-      <div className="bg-blue-950/80 p-2 rounded-2xl border border-white/15 backdrop-blur-md grid grid-cols-2 gap-2 shadow-2xl max-w-sm mx-auto w-full">
+      {/* Role Selection Tabs (English Only) */}
+      <div className="bg-blue-950/80 p-2 rounded-2xl border border-white/15 backdrop-blur-md grid grid-cols-2 gap-2 shadow-2xl max-w-sm mx-auto w-full font-sans">
         <button
           type="button"
           onClick={() => handleRoleSwitch('owner')}
@@ -106,7 +98,7 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
               : 'text-blue-200 hover:text-white hover:bg-white/10'
           }`}
         >
-          <span>{t('owner')}</span>
+          <span>OWNER</span>
         </button>
 
         <button
@@ -118,19 +110,12 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
               : 'text-blue-200 hover:text-white hover:bg-white/10'
           }`}
         >
-          <span>{t('employee')}</span>
+          <span>STAFF</span>
         </button>
       </div>
 
-      {/* PIN Dots Area */}
-      <div className="text-center space-y-4 py-3">
-        <div className="flex items-center justify-center gap-2 text-sm md:text-base text-blue-100 font-extrabold">
-          <KeyRound className="w-4 h-4 text-amber-400" />
-          <span>
-            {selectedRole === 'owner' ? t('enterOwnerPin') : t('enterEmployeePin')}
-          </span>
-        </div>
-
+      {/* PIN Dots Area (English Only) */}
+      <div className="text-center space-y-4 py-4 font-sans">
         {/* 4 PIN Dots */}
         <div
           className={`flex justify-center items-center gap-6 transition-transform duration-100 ${
@@ -160,8 +145,8 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
         )}
       </div>
 
-      {/* Numeric Keypad */}
-      <div className="grid grid-cols-3 gap-3 md:gap-4 max-w-sm mx-auto w-full pb-4">
+      {/* Numeric Keypad (English Only) */}
+      <div className="grid grid-cols-3 gap-3 md:gap-4 max-w-sm mx-auto w-full pb-4 font-sans">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
           <button
             key={digit}
@@ -176,9 +161,9 @@ export const LoginScreen: React.FC<Props> = ({ settings, onLoginSuccess }) => {
         <button
           type="button"
           onClick={handleClear}
-          className="h-16 md:h-20 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/25 text-blue-200 font-black text-sm md:text-base tracking-wider flex items-center justify-center border border-white/10 active:scale-95 transition-all"
+          className="h-16 md:h-20 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-white/25 text-blue-200 font-black text-sm md:text-base tracking-wider flex items-center justify-center border border-white/10 active:scale-95 transition-all uppercase"
         >
-          {t('clear')}
+          CLEAR
         </button>
 
         <button
