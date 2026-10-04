@@ -352,9 +352,27 @@ export const EggAgencyService = {
   /**
    * Request bill deletion by employee (sent to Owner for approval)
    */
-  async requestBillDelete(billId: string, employeeName: string, reason: string): Promise<Bill | null> {
+  async requestBillDelete(
+    billId: string,
+    employeeName: string,
+    reason: string = '',
+    billObj?: Bill
+  ): Promise<Bill | null> {
     const bills = getLocalBills();
-    const bill = bills.find((b) => b.billId === billId);
+    let bill = bills.find((b) => b.billId === billId);
+    if (!bill && billObj) {
+      bill = billObj;
+    }
+    if (!bill) {
+      try {
+        const snap = await getDoc(doc(db, 'bills', billId));
+        if (snap.exists()) {
+          bill = snap.data() as Bill;
+        }
+      } catch (err) {
+        console.warn('Could not fetch bill from Firestore:', err);
+      }
+    }
     if (!bill) return null;
 
     const updatedBill: Bill = {
@@ -363,7 +381,7 @@ export const EggAgencyService = {
         status: 'pending',
         requestedAt: new Date().toISOString(),
         requestedBy: employeeName,
-        reason: reason.trim() || 'No reason specified',
+        reason: reason.trim() || 'Staff requested deletion',
       },
     };
 
@@ -372,6 +390,16 @@ export const EggAgencyService = {
     // Save to Firestore and create notification for Owner
     try {
       await setDoc(doc(db, 'bills', billId), updatedBill, { merge: true });
+
+      // Save to dedicated delete_requests collection so Owner receives it in real-time
+      await setDoc(doc(db, 'delete_requests', billId), {
+        billId,
+        bill: updatedBill,
+        status: 'pending',
+        requestedBy: employeeName,
+        requestedAt: new Date().toISOString(),
+        date: bill.date,
+      });
 
       const notifId = `del_req_${billId}_${Date.now()}`;
       const notif: BillNotification = {
@@ -415,8 +443,11 @@ export const EggAgencyService = {
         }
       }
 
-      // 3. Delete from Firestore
+      // 3. Delete from Firestore bills & delete_requests
       await deleteDoc(doc(db, 'bills', bill.billId));
+      try {
+        await deleteDoc(doc(db, 'delete_requests', bill.billId));
+      } catch {}
 
       // 4. Create notification that delete was approved
       const notifId = `del_app_${bill.billId}_${Date.now()}`;
@@ -468,6 +499,9 @@ export const EggAgencyService = {
       saveLocalBill(updatedBill);
 
       await setDoc(doc(db, 'bills', bill.billId), updatedBill, { merge: true });
+      try {
+        await deleteDoc(doc(db, 'delete_requests', bill.billId));
+      } catch {}
       return true;
     } catch (err) {
       console.warn('Failed to reject delete request:', err);
@@ -510,6 +544,53 @@ export const EggAgencyService = {
         },
         (error) => {
           console.warn('Bills snapshot listener notice (offline fallback active):', error);
+        }
+      );
+
+      return unsubscribe;
+    } catch {
+      return () => {};
+    }
+  },
+
+  /**
+   * Real-time subscription to all pending delete requests across the system
+   */
+  subscribeToPendingDeleteRequests(onUpdate: (bills: Bill[]) => void): () => void {
+    // 1. Initial emission from local storage
+    const emitLocal = () => {
+      const local = getLocalBills().filter((b) => b.deleteRequest?.status === 'pending');
+      onUpdate(local);
+    };
+    emitLocal();
+
+    try {
+      // 2. Real-time Firestore listener on delete_requests collection
+      const unsubscribe = onSnapshot(
+        collection(db, 'delete_requests'),
+        (snapshot) => {
+          const list: Bill[] = [];
+          snapshot.forEach((d) => {
+            const data = d.data();
+            if (data.status === 'pending' && data.bill) {
+              list.push(data.bill as Bill);
+            }
+          });
+
+          // Merge any pending delete requests from local storage
+          const local = getLocalBills().filter((b) => b.deleteRequest?.status === 'pending');
+          for (const l of local) {
+            if (!list.some((item) => item.billId === l.billId)) {
+              list.push(l);
+            }
+          }
+
+          list.sort((a, b) => (b.billNumber || 0) - (a.billNumber || 0));
+          onUpdate(list);
+        },
+        (error) => {
+          console.warn('Delete requests snapshot notice (offline fallback active):', error);
+          emitLocal();
         }
       );
 

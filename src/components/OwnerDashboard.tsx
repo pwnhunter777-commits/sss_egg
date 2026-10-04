@@ -9,7 +9,7 @@ import {
 } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { getTodayDateString, formatIndianCurrency } from '../lib/offlineStorage';
-import { playChimeSound } from '../lib/soundNotification';
+import { playChimeSound, playDeleteAlertSound } from '../lib/soundNotification';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from './LanguageToggle';
 import { DailyPriceModal } from './DailyPriceModal';
@@ -78,11 +78,13 @@ export const OwnerDashboard: React.FC<Props> = ({
   const [activeTab, setActiveTab] = useState<'overview' | 'bills' | 'delete_requests'>('overview');
   const [billSearch, setBillSearch] = useState('');
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+  const [globalPendingRequests, setGlobalPendingRequests] = useState<Bill[]>([]);
 
   const handleApproveDelete = async (bill: Bill) => {
     try {
       await EggAgencyService.approveBillDelete(bill, true);
       setBills((prev) => prev.filter((b) => b.billId !== bill.billId));
+      setGlobalPendingRequests((prev) => prev.filter((b) => b.billId !== bill.billId));
       setActionFeedback(
         isTamil
           ? `பில் #${bill.billNumber} நீக்கப்பட்டது! ${bill.eggQuantity} முட்டைகள் மீண்டும் இருப்புக்கு சேர்க்கப்பட்டன.`
@@ -104,6 +106,7 @@ export const OwnerDashboard: React.FC<Props> = ({
             : b
         )
       );
+      setGlobalPendingRequests((prev) => prev.filter((b) => b.billId !== bill.billId));
       setActionFeedback(
         isTamil
           ? `பில் #${bill.billNumber} நீக்குதல் கோரிக்கை நிராகரிக்கப்பட்டது.`
@@ -170,6 +173,12 @@ export const OwnerDashboard: React.FC<Props> = ({
 
   // Real-time Notification subscription for Owner
   useEffect(() => {
+    // 1. Subscribe to pending delete requests globally
+    const unsubPendingReqs = EggAgencyService.subscribeToPendingDeleteRequests((reqBills) => {
+      setGlobalPendingRequests(reqBills);
+    });
+
+    // 2. Subscribe to notifications
     let lastSeenNotifId = '';
     const unsubNotifs = EggAgencyService.subscribeToNotifications((notifList) => {
       setNotifications(notifList);
@@ -178,15 +187,22 @@ export const OwnerDashboard: React.FC<Props> = ({
         if (newest.notificationId !== lastSeenNotifId && !newest.read) {
           lastSeenNotifId = newest.notificationId;
           setActiveBannerNotif(newest);
-          playChimeSound();
+          if (newest.type === 'delete_request') {
+            playDeleteAlertSound();
+          } else {
+            playChimeSound();
+          }
           setTimeout(() => {
             setActiveBannerNotif(null);
-          }, 6000);
+          }, 8000);
         }
       }
     });
 
-    return () => unsubNotifs();
+    return () => {
+      unsubPendingReqs();
+      unsubNotifs();
+    };
   }, []);
 
   // Calculations
@@ -219,7 +235,22 @@ export const OwnerDashboard: React.FC<Props> = ({
 
   const unreadNotifsCount = notifications.filter((n) => !n.read).length;
 
-  const pendingDeleteBills = bills.filter((b) => b.deleteRequest?.status === 'pending');
+  // Merge real-time global pending delete requests across the system with current date bills
+  const pendingDeleteBills = React.useMemo(() => {
+    const map = new Map<string, Bill>();
+    for (const b of globalPendingRequests) {
+      if (b.deleteRequest?.status === 'pending') {
+        map.set(b.billId, b);
+      }
+    }
+    for (const b of bills) {
+      if (b.deleteRequest?.status === 'pending') {
+        map.set(b.billId, b);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => (b.billNumber || 0) - (a.billNumber || 0));
+  }, [globalPendingRequests, bills]);
+
   const rejectedDeleteBills = bills.filter((b) => b.deleteRequest?.status === 'rejected');
   const totalPendingEggs = pendingDeleteBills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
   const totalPendingAmount = pendingDeleteBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -378,16 +409,26 @@ export const OwnerDashboard: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setActiveTab('delete_requests')}
-            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-1.5 relative ${
               activeTab === 'delete_requests'
-                ? 'bg-rose-600 text-white shadow-sm'
+                ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-400'
+                : pendingDeleteBills.length > 0
+                ? 'bg-rose-100 text-rose-800 border-2 border-rose-400 font-black animate-pulse shadow-sm'
                 : 'text-rose-700 hover:bg-rose-50 border border-rose-200 font-bold'
             }`}
           >
-            <span>{t('deleteRequests')}</span>
+            <span className="flex items-center gap-1.5">
+              <span>{t('deleteRequests')}</span>
+              {pendingDeleteBills.length > 0 && (
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600" />
+                </span>
+              )}
+            </span>
             {pendingDeleteBills.length > 0 && (
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-black animate-pulse ${
+                className={`text-xs px-2 py-0.5 rounded-full font-black animate-bounce shadow-sm ${
                   activeTab === 'delete_requests' ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'
                 }`}
               >
