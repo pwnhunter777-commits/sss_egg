@@ -126,8 +126,13 @@ export class ThermalPrinterService {
     appendBytes([ESC, 0x21, 0x30]);
     appendLine(settings.agencyName || 'SSS EGG AGENCY');
 
+    // Reset font size to normal: ESC ! 0x00
+    appendBytes([ESC, 0x21, 0x00]);
     // Bold font emphasized on: ESC E 1
     appendBytes([ESC, 0x45, 0x01]);
+
+    // Date & Time below store name
+    appendLine(`DATE: ${bill.date}  TIME: ${bill.time}`);
 
     // Divider
     appendLine('='.repeat(lineWidth));

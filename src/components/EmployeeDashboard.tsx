@@ -70,7 +70,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
 
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = getTodayDateString();
 
   // Monitor network status
   useEffect(() => {
@@ -131,8 +131,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
   // Billing calculations
   const eggQuantity = parseInt(eggQuantityStr || '0', 10);
-  const pricePerEgg = todayPrice?.pricePerEgg || 3;
-  const pricePer30Eggs = todayPrice?.pricePer30Eggs || pricePerEgg * 30;
+  const pricePerEgg = todayPrice?.pricePerEgg ?? 0;
+  const pricePer30Eggs = todayPrice?.pricePer30Eggs ?? (pricePerEgg * 30);
 
   // Calculated Total Amount (rounded to integer, e.g. 1.45 -> 1, 1.65 -> 2)
   const rawTotal =
@@ -232,8 +232,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
       pricePerEgg,
       pricePer30Eggs,
       totalAmount: calculatedTotal,
-      purchaseCostPerEgg: todayPrice?.purchaseCost ?? 2,
-      profit: Math.max(0, calculatedTotal - eggQuantity * (todayPrice?.purchaseCost ?? 2)),
+      purchaseCostPerEgg: todayPrice?.purchaseCost ?? 0,
+      profit: Math.max(0, calculatedTotal - eggQuantity * (todayPrice?.purchaseCost ?? 0)),
       syncStatus: 'pending',
     };
 

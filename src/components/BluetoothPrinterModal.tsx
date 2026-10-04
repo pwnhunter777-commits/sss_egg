@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PrinterDevice, AgencySettings, Bill } from '../types';
 import { thermalPrinter } from '../lib/thermalPrinter';
-import { setLocalPrinter } from '../lib/offlineStorage';
+import { getTodayDateString, formatTime, setLocalPrinter } from '../lib/offlineStorage';
 import { playPrintClickSound } from '../lib/soundNotification';
 import { Bluetooth, Printer, CheckCircle2, AlertCircle, RefreshCw, X, Sliders } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
@@ -88,8 +88,8 @@ export const BluetoothPrinterModal: React.FC<Props> = ({
       billNumber: 9999,
       employeeId: 'emp_01',
       employeeName: 'Staff Ramesh',
-      date: new Date().toISOString().split('T')[0],
-      time: '12:00 PM',
+      date: getTodayDateString(),
+      time: formatTime(new Date()),
       createdAt: new Date().toISOString(),
       eggQuantity: 30,
       pricePerEgg: 3,

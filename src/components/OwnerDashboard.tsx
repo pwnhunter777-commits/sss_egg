@@ -16,7 +16,6 @@ import { DailyPriceModal } from './DailyPriceModal';
 import { StockImportModal } from './StockImportModal';
 import { OwnerSettingsModal } from './OwnerSettingsModal';
 import { ThermalReceipt } from './ThermalReceipt';
-import { BluetoothPrinterModal } from './BluetoothPrinterModal';
 import {
   Egg,
   LogOut,
@@ -39,6 +38,7 @@ import {
   AlertTriangle,
   ShieldCheck,
   XCircle,
+  Eye,
 } from 'lucide-react';
 
 interface Props {
@@ -69,9 +69,7 @@ export const OwnerDashboard: React.FC<Props> = ({
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [activeReceiptBill, setActiveReceiptBill] = useState<Bill | null>(null);
-  const [billToOwnerDelete, setBillToOwnerDelete] = useState<Bill | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   // Active view tab
@@ -115,24 +113,6 @@ export const OwnerDashboard: React.FC<Props> = ({
       setTimeout(() => setActionFeedback(null), 4000);
     } catch (err) {
       console.error('Reject delete failed:', err);
-    }
-  };
-
-  const handleOwnerConfirmDelete = async () => {
-    if (!billToOwnerDelete) return;
-    const b = billToOwnerDelete;
-    try {
-      await EggAgencyService.approveBillDelete(b, true);
-      setBills((prev) => prev.filter((item) => item.billId !== b.billId));
-      setBillToOwnerDelete(null);
-      setActionFeedback(
-        isTamil
-          ? `பில் #${b.billNumber} வெற்றிகரமாக நீக்கப்பட்டது! முட்டைகள் இருப்புக்கு திரும்பின.`
-          : `Bill #${b.billNumber} deleted successfully! Eggs returned to stock.`
-      );
-      setTimeout(() => setActionFeedback(null), 4000);
-    } catch (err) {
-      console.error('Delete failed:', err);
     }
   };
 
@@ -439,13 +419,13 @@ export const OwnerDashboard: React.FC<Props> = ({
         </div>
 
         {/* Date Selector */}
-        <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-300 text-xs md:text-sm font-black shrink-0 ml-2">
-          <Calendar className="w-4 h-4 text-blue-600 shrink-0" />
+        <div className="flex items-center gap-1 bg-slate-100 hover:bg-slate-200/80 px-2 py-0.5 rounded-lg border border-slate-300/80 text-[11px] font-bold shrink-0 ml-auto shadow-2xs transition-colors">
+          <Calendar className="w-3 h-3 text-blue-600 shrink-0" />
           <input
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent text-slate-900 font-black text-xs md:text-sm focus:outline-hidden cursor-pointer"
+            className="bg-transparent text-slate-800 font-bold text-[11px] focus:outline-hidden cursor-pointer w-[105px] sm:w-auto"
           />
         </div>
       </nav>
@@ -675,15 +655,6 @@ export const OwnerDashboard: React.FC<Props> = ({
                         <span className="font-mono font-black text-sm md:text-base text-blue-900">
                           {t('billNo')} #{b.billNumber}
                         </span>
-                        <span
-                          className={`text-xs px-2.5 py-0.5 rounded-full font-black ${
-                            b.syncStatus === 'synced'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {b.syncStatus === 'synced' ? t('synced') : t('offline')}
-                        </span>
                         {b.deleteRequest?.status === 'pending' && (
                           <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-rose-600 text-white animate-pulse">
                             ⚠️ {isTamil ? 'நீக்குதல் கோரிக்கை' : 'Delete Requested'}
@@ -695,8 +666,10 @@ export const OwnerDashboard: React.FC<Props> = ({
                         <span className="text-slate-400"> • </span>
                         <span>₹{b.pricePerEgg}{t('perEgg')}</span>
                       </div>
-                      <div className="text-xs md:text-sm font-bold text-slate-500">
-                        {b.time} • {t('profit')}: ₹{b.profit} • {t('staff')}: {b.employeeName}
+                      <div className="text-xs md:text-sm font-bold text-slate-500 flex items-center gap-1.5 flex-wrap">
+                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono text-xs">{b.time}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-emerald-700 font-black">{t('profit')}: ₹{b.profit}</span>
                       </div>
                     </div>
 
@@ -704,24 +677,15 @@ export const OwnerDashboard: React.FC<Props> = ({
                       <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
                         ₹{b.totalAmount}
                       </div>
-                      <div className="flex items-center gap-1.5 justify-end">
+                      <div className="flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => setActiveReceiptBill(b)}
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs md:text-sm font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
                           title={t('receiptPreview')}
                         >
-                          <Printer className="w-4 h-4" />
+                          <Eye className="w-4 h-4 shrink-0" />
                           <span>{t('receiptPreview')}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBillToOwnerDelete(b)}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs md:text-sm font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-rose-200 active:scale-95 transition-all"
-                          title={t('deleteBill')}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>{t('delete')}</span>
                         </button>
                       </div>
                     </div>
@@ -968,83 +932,14 @@ export const OwnerDashboard: React.FC<Props> = ({
         />
       )}
 
-      {showPrinterModal && (
-        <BluetoothPrinterModal
-          printer={printer}
-          settings={settings}
-          onUpdatePrinter={onUpdatePrinter}
-          onClose={() => setShowPrinterModal(false)}
-        />
-      )}
-
       {activeReceiptBill && (
         <ThermalReceipt
           bill={activeReceiptBill}
           settings={settings}
           printer={printer}
+          hidePrintButton={true}
           onClose={() => setActiveReceiptBill(null)}
-          onOpenPrinterSettings={() => {
-            setActiveReceiptBill(null);
-            setShowPrinterModal(true);
-          }}
         />
-      )}
-
-      {/* Owner Direct Delete Confirmation Modal */}
-      {billToOwnerDelete && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border-2 border-slate-200 overflow-hidden flex flex-col">
-            <div className="bg-rose-600 text-white p-4 flex items-center gap-2.5">
-              <AlertTriangle className="w-6 h-6 shrink-0" />
-              <div>
-                <h3 className="font-black text-base uppercase tracking-tight">
-                  {t('deleteBillPermanently')}
-                </h3>
-                <p className="text-xs text-rose-100 font-bold">
-                  {t('billNo')} #{billToOwnerDelete.billNumber}
-                </p>
-              </div>
-            </div>
-            <div className="p-4 space-y-3 font-mono">
-              <p className="text-xs font-bold text-slate-700">
-                {t('deleteBillConfirmDesc')}
-              </p>
-              <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 text-xs space-y-1 font-bold">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{t('eggQuantity')}:</span>
-                  <span className="font-black text-rose-700">
-                    +{billToOwnerDelete.eggQuantity} {t('eggs')} (return to stock)
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{t('total')}:</span>
-                  <span className="font-black text-slate-900">₹{billToOwnerDelete.totalAmount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">{t('staff')}:</span>
-                  <span className="font-black text-slate-900">{billToOwnerDelete.employeeName}</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setBillToOwnerDelete(null)}
-                  className="py-2.5 px-3 rounded-xl border-2 border-slate-300 text-slate-700 font-black text-xs uppercase hover:bg-slate-100 transition-all active:scale-95"
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOwnerConfirmDelete}
-                  className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-95"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>{t('delete')}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

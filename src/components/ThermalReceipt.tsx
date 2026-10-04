@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import { Bill, AgencySettings, PrinterDevice } from '../types';
 import { thermalPrinter } from '../lib/thermalPrinter';
 import { playPrintClickSound } from '../lib/soundNotification';
-import { Printer, Check, X } from 'lucide-react';
+import { Printer, Check, X, Eye } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   onConfirmAndSave?: () => Promise<Bill>;
   onClose: () => void;
   onOpenPrinterSettings?: () => void;
+  hidePrintButton?: boolean;
 }
 
 export const ThermalReceipt: React.FC<Props> = ({
@@ -24,6 +25,7 @@ export const ThermalReceipt: React.FC<Props> = ({
   onConfirmAndSave,
   onClose,
   onOpenPrinterSettings,
+  hidePrintButton = false,
 }) => {
   const { t, isTamil } = useLanguage();
   const [printing, setPrinting] = useState(false);
@@ -92,20 +94,28 @@ export const ThermalReceipt: React.FC<Props> = ({
         {/* Modal Top Bar */}
         <div className="bg-blue-800 text-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Printer className="w-5 h-5 text-blue-200" />
+            {hidePrintButton ? (
+              <Eye className="w-5 h-5 text-blue-200" />
+            ) : (
+              <Printer className="w-5 h-5 text-blue-200" />
+            )}
             <span className="font-semibold text-sm">{t('receiptPreview')}</span>
           </div>
           <div className="flex items-center gap-1">
+            {!hidePrintButton && (
+              <button
+                type="button"
+                onClick={() => setPaperWidth(paperWidth === '58mm' ? '80mm' : '58mm')}
+                className="text-xs bg-blue-950/50 hover:bg-blue-950 px-2 py-1 rounded text-blue-200 font-mono"
+                title="Toggle Paper Width"
+              >
+                {paperWidth}
+              </button>
+            )}
             <button
-              onClick={() => setPaperWidth(paperWidth === '58mm' ? '80mm' : '58mm')}
-              className="text-xs bg-blue-950/50 hover:bg-blue-950 px-2 py-1 rounded text-blue-200 font-mono"
-              title="Toggle Paper Width"
-            >
-              {paperWidth}
-            </button>
-            <button
+              type="button"
               onClick={onClose}
-              className="p-1 rounded-full hover:bg-blue-700 text-blue-100"
+              className="p-1 rounded-full hover:bg-blue-700 text-blue-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -121,12 +131,17 @@ export const ThermalReceipt: React.FC<Props> = ({
             } border-t-4 border-dashed border-slate-400 relative select-none`}
           >
             {/* Store Header */}
-            <div className="border-b-2 border-dashed border-black pb-2 mb-2 text-center">
+            <div className="border-b-2 border-dashed border-black pb-2 mb-2 text-center space-y-1">
               <h2 className="text-lg md:text-xl font-black tracking-tight uppercase text-black">
                 {isTamil && settings.agencyName === 'SSS EGG AGENCY'
                   ? t('agencyNameDefault')
                   : settings.agencyName || t('agencyNameDefault')}
               </h2>
+              {/* Date and Time below store name */}
+              <div className="flex items-center justify-between text-[11px] font-bold text-black border-t border-dashed border-black/40 pt-1">
+                <span>{t('date')}: {currentBill.date}</span>
+                <span>{t('time')}: {currentBill.time}</span>
+              </div>
             </div>
 
             {/* Bill Body: Left Side (Items & Total Spans) + Right Side (QR Image) */}
@@ -174,43 +189,59 @@ export const ThermalReceipt: React.FC<Props> = ({
 
         {/* Action Controls */}
         <div className="p-4 bg-white border-t border-slate-200 space-y-3">
-          {printError && (
-            <div className="text-xs md:text-sm text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-200 flex items-center justify-between font-bold">
-              <span>{printError}</span>
+          {hidePrintButton ? (
+            <div>
               <button
-                onClick={() => setPrintError(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold ml-2"
+                type="button"
+                onClick={onClose}
+                className="w-full bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-black py-3.5 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all text-sm uppercase tracking-wider"
               >
-                ✕
+                <span>{t('close')}</span>
               </button>
             </div>
-          )}
+          ) : (
+            <>
+              {printError && (
+                <div className="text-xs md:text-sm text-rose-700 bg-rose-50 p-3 rounded-xl border border-rose-200 flex items-center justify-between font-bold">
+                  <span>{printError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setPrintError(null)}
+                    className="text-slate-400 hover:text-slate-600 font-bold ml-2"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
-          {printSuccess && (
-            <div className="text-xs md:text-sm text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex items-center gap-2 justify-center font-black animate-in fade-in">
-              <Check className="w-5 h-5 text-emerald-600" />
-              {t('printSuccessMsg')}
-            </div>
-          )}
+              {printSuccess && (
+                <div className="text-xs md:text-sm text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex items-center gap-2 justify-center font-black animate-in fade-in">
+                  <Check className="w-5 h-5 text-emerald-600" />
+                  {t('printSuccessMsg')}
+                </div>
+              )}
 
-          <div>
-            <button
-              onClick={handlePrint}
-              disabled={printing}
-              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black py-4 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all text-base"
-            >
-              <Printer className="w-5 h-5" />
-              <span>
-                {printing
-                  ? isDraft
-                    ? t('savingAndPrinting')
-                    : t('printing')
-                  : isDraft
-                  ? t('confirmAndPrint')
-                  : t('printBill')}
-              </span>
-            </button>
-          </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  disabled={printing}
+                  className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black py-4 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all text-base"
+                >
+                  <Printer className="w-5 h-5" />
+                  <span>
+                    {printing
+                      ? isDraft
+                        ? t('savingAndPrinting')
+                        : t('printing')
+                      : isDraft
+                      ? t('confirmAndPrint')
+                      : t('printBill')}
+                  </span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

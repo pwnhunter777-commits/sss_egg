@@ -55,7 +55,7 @@ service cloud.firestore {
         ])
         && request.resource.data.eggQuantity is number && request.resource.data.eggQuantity > 0
         && request.resource.data.totalAmount is number && request.resource.data.totalAmount >= 0
-        && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg > 0
+        && request.resource.data.pricePerEgg is number && request.resource.data.pricePerEgg >= 0
         && isValidDate(request.resource.data.date);
       allow update: if isValidId(billId)
         && request.resource.data.billId == resource.data.billId
