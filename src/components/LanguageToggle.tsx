@@ -58,14 +58,14 @@ export const LanguageToggle: React.FC<Props> = ({ variant = 'light', className =
       <button
         type="button"
         onClick={handleToggle}
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border font-black text-xs transition-all active:scale-95 ${
+        className={`flex items-center gap-1 px-2 py-1.5 rounded-xl border font-black text-xs shrink-0 whitespace-nowrap transition-all active:scale-95 ${
           language === 'ta'
             ? 'bg-amber-100 text-amber-900 border-amber-300'
             : 'bg-blue-100 text-blue-900 border-blue-200'
         } ${className}`}
         title="Change Language / மொழியை மாற்றுக"
       >
-        <Languages className="w-3.5 h-3.5" />
+        <Languages className="w-3.5 h-3.5 shrink-0" />
         <span>{language === 'en' ? 'தமிழ்' : 'English'}</span>
       </button>
     );

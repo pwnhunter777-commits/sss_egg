@@ -22,9 +22,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (language === 'ta') {
         document.documentElement.classList.add('lang-ta');
         document.body.classList.add('lang-ta');
+        document.documentElement.classList.remove('lang-en');
+        document.body.classList.remove('lang-en');
       } else {
         document.documentElement.classList.remove('lang-ta');
         document.body.classList.remove('lang-ta');
+        document.documentElement.classList.add('lang-en');
+        document.body.classList.add('lang-en');
       }
     }
   }, [language]);

@@ -274,39 +274,39 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const pendingSyncCount = bills.filter((b) => b.syncStatus === 'pending').length;
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-100 text-slate-800">
+    <div className="flex-1 flex flex-col bg-slate-100 text-slate-800 overflow-hidden">
       {/* Top Bar Header */}
-      <header className="bg-blue-700 text-white px-3.5 py-3 shadow-md shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-              <Egg className="w-6 h-6 text-amber-300" />
+      <header className="bg-blue-800 text-white px-3 py-2.5 shadow-md shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Brand & Mode */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
+              <Egg className="w-5 h-5 text-amber-300" />
             </div>
-            <div>
-              <h1 className="font-black text-sm md:text-base tracking-tight uppercase leading-tight">
+            <div className="min-w-0 flex-1">
+              <h1 className="font-black text-sm tracking-tight uppercase truncate leading-tight">
                 {isTamil && settings.agencyName === 'SSS EGG AGENCY'
                   ? t('agencyNameDefault')
                   : settings.agencyName || t('agencyNameDefault')}
               </h1>
-              <div className="flex items-center gap-2 text-xs text-blue-200 font-bold">
-                <span className="font-black text-white">{t('employee')} {t('billing')}</span>
+              <div className="flex items-center gap-1.5 text-xs text-blue-200 font-bold truncate mt-0.5">
+                <span className="font-black text-white">{t('employee')}</span>
                 <span>•</span>
-                <span className="flex items-center gap-1 font-black">
-                  {isOnline ? (
-                    <span className="text-emerald-300 flex items-center gap-1">
-                      <Wifi className="w-3.5 h-3.5" /> {t('online')}
-                    </span>
-                  ) : (
-                    <span className="text-amber-300 flex items-center gap-1 font-black">
-                      <WifiOff className="w-3.5 h-3.5" /> {t('offline')}
-                    </span>
-                  )}
-                </span>
+                {isOnline ? (
+                  <span className="text-emerald-300 flex items-center gap-1 font-black">
+                    <Wifi className="w-3 h-3" /> {t('online')}
+                  </span>
+                ) : (
+                  <span className="text-amber-300 flex items-center gap-1 font-black">
+                    <WifiOff className="w-3 h-3" /> {t('offline')}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          {/* Right: Actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Language Switcher */}
             <LanguageToggle variant="header" />
 
@@ -314,9 +314,9 @@ export const EmployeeDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowPrinterModal(true)}
-              className={`p-2 rounded-xl text-xs font-black flex items-center gap-1 transition-all ${
+              className={`p-2 rounded-xl text-xs font-black flex items-center transition-all ${
                 thermalPrinter.isConnected()
-                  ? 'bg-emerald-500/20 text-emerald-200 border-2 border-emerald-400/40'
+                  ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40'
                   : 'bg-white/10 text-white hover:bg-white/20'
               }`}
               title={t('printerSetup')}
@@ -338,191 +338,200 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
         {/* Sync banner if pending bills */}
         {pendingSyncCount > 0 && (
-          <div className="mt-2.5 bg-amber-400/25 border-2 border-amber-300/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs md:text-sm font-black text-amber-200">
+          <div className="mt-2 bg-amber-400/25 border border-amber-300/40 rounded-xl px-2.5 py-1 flex items-center justify-between text-xs font-black text-amber-200">
             <span>{pendingSyncCount} {t('pendingSync')}</span>
             <button
               onClick={triggerAutoSync}
               disabled={isSyncing || !isOnline}
-              className="text-xs font-black bg-amber-400 text-amber-950 px-3 py-1 rounded-lg flex items-center gap-1"
+              className="text-xs font-black bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-lg flex items-center gap-1"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? '...' : t('update')}
             </button>
           </div>
         )}
 
         {syncStatusMsg && (
-          <div className="mt-2 bg-emerald-400/25 border-2 border-emerald-300/40 rounded-xl px-3 py-1.5 text-xs md:text-sm font-black text-emerald-200">
+          <div className="mt-2 bg-emerald-400/25 border border-emerald-300/40 rounded-xl px-2.5 py-1 text-xs font-black text-emerald-200">
             {syncStatusMsg}
           </div>
         )}
       </header>
 
-      {/* Navigation Tabs */}
-      <nav aria-label="Employee Navigation" className="bg-white border-b border-slate-200 px-4 py-2 flex gap-2 shrink-0 shadow-xs">
+      {/* Navigation Tabs - Clean, Equal, Single Line */}
+      <nav aria-label="Employee Navigation" className="bg-white border-b border-slate-200 px-3 py-2 flex gap-2 shrink-0 shadow-xs">
         <button
           type="button"
           onClick={() => setActiveTab('billing')}
-          className={`flex-1 py-3 px-4 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'billing'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 hover:bg-slate-100 font-bold'
           }`}
         >
-          <PlusCircle className="w-5 h-5" />
-          <span>{t('createAndPrint')}</span>
+          <PlusCircle className="w-4 h-4 shrink-0" />
+          <span className="truncate">{isTamil ? 'பில் போடுதல்' : 'New Bill'}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('history')}
-          className={`flex-1 py-3 px-4 rounded-2xl font-black text-sm md:text-base flex items-center justify-center gap-2 transition-all ${
+          className={`flex-1 py-2.5 px-3 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'history'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
               : 'text-slate-600 hover:bg-slate-100 font-bold'
           }`}
         >
-          <History className="w-5 h-5" />
-          <span>{t('billHistory')} ({bills.length})</span>
+          <History className="w-4 h-4 shrink-0" />
+          <span className="truncate">{isTamil ? 'பில் வரலாறு' : 'History'} ({bills.length})</span>
         </button>
       </nav>
 
       {/* TAB CONTENT: BILLING SCREEN */}
       {activeTab === 'billing' && (
-        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
-          {/* Read-Only Current Price Banner */}
-          <div className="bg-white rounded-3xl p-4 border-2 border-blue-100 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 font-black text-2xl">
-                🥚
+        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
+          {/* Rate & Stock Grid: 2 Equal Columns, Never Wrapping Awkwardly */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Card 1: Today's Rate */}
+            <div className="bg-white rounded-2xl p-3 border-2 border-blue-100 shadow-xs flex flex-col justify-between">
+              <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                {isTamil ? 'இன்றைய விலை' : "Today's Rate"}
               </div>
-              <div>
-                <div className="text-xl md:text-2xl font-black text-blue-900 font-mono">
-                  {pricePer30Eggs > 0 ? (
-                    <>
-                      ₹{pricePer30Eggs}{' '}
-                      <span className="text-xs font-bold text-slate-500">
-                        / 1 {isTamil ? 'தாரா' : 'Tara (30 eggs)'}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-sm font-bold text-amber-600">
-                      {isTamil ? 'தாரா விலை இன்னும் அமைக்கப்படவில்லை' : 'Price not set for today'}
-                    </span>
-                  )}
-                </div>
-                {pricePerEgg > 0 && (
-                  <div className="text-xs font-bold text-slate-500">
-                    ₹{pricePerEgg.toFixed(2)} / egg
-                  </div>
-                )}
+              <div className="my-1">
+                <span className="text-xl md:text-2xl font-black text-blue-900 font-mono">
+                  ₹{pricePer30Eggs}
+                </span>
+                <span className="text-xs font-bold text-slate-500 block">
+                  {isTamil ? '/ 30 முட்டை (1 தாரா)' : '/ 30 eggs (1 tara)'}
+                </span>
+              </div>
+              <div className="text-xs font-bold text-slate-600">
+                ₹{pricePerEgg.toFixed(2)} / {t('egg')}
               </div>
             </div>
 
-            {/* Remaining Stock Badge */}
-            <div className="text-right">
-              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
+            {/* Card 2: In Stock */}
+            <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs flex flex-col justify-between">
+              <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
                 {t('inStock')}
               </div>
-              <div
-                className={`text-sm md:text-base font-black px-3 py-1 rounded-xl inline-block mt-0.5 font-mono ${
-                  remainingStock > 200
-                    ? 'bg-emerald-50 text-emerald-800 border-2 border-emerald-200'
+              <div className="my-1">
+                <span className="text-xl md:text-2xl font-black text-slate-900 font-mono">
+                  {remainingStock.toLocaleString('en-IN')}
+                </span>
+                <span className="text-xs font-bold text-slate-500 block">
+                  {t('eggs')}
+                </span>
+              </div>
+              <div>
+                <span
+                  className={`text-[11px] font-black px-2 py-0.5 rounded-full inline-block ${
+                    remainingStock > 200
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : remainingStock > 0
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-rose-100 text-rose-800'
+                  }`}
+                >
+                  {remainingStock > 200
+                    ? isTamil ? 'இருப்பு உள்ளது' : 'Available'
                     : remainingStock > 0
-                    ? 'bg-amber-50 text-amber-800 border-2 border-amber-200'
-                    : 'bg-rose-50 text-rose-800 border-2 border-rose-200'
-                }`}
-              >
-                {remainingStock} {t('eggs')}
+                    ? isTamil ? 'குறைந்த இருப்பு' : 'Low Stock'
+                    : isTamil ? 'முடிந்தது' : 'Out of Stock'}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Quantity & Calculation Card */}
-          <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-sm space-y-3">
-            <div className="flex items-center justify-between text-xs md:text-sm font-black text-slate-700">
+          <div className="bg-white rounded-2xl p-3.5 border-2 border-slate-200 shadow-xs space-y-2.5">
+            <div className="flex items-center justify-between text-xs font-black text-slate-700">
               <span>{t('enterEggQty')}</span>
               {eggQuantity >= 30 && (
-                <span className="text-blue-700 font-mono font-black text-xs bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">
+                <span className="text-blue-700 font-mono font-black text-[11px] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
                   {Math.floor(eggQuantity / 30)} {Math.floor(eggQuantity / 30) > 1 ? t('trays') : t('tray')}
                   {eggQuantity % 30 > 0 ? ` + ${eggQuantity % 30} ${t('loose')}` : ''}
                 </span>
               )}
             </div>
 
-            {/* Large Quantity Input Display */}
-            <div className="bg-slate-50 border-2 border-blue-500/40 rounded-2xl p-3.5 flex items-baseline justify-between shadow-inner">
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-4xl md:text-5xl font-black text-slate-900 font-mono tracking-tight">
-                  {eggQuantityStr || '0'}
-                </span>
-                <span className="text-base font-extrabold text-slate-500">{t('eggs')}</span>
+            {/* Large Display Box with Quantity on Left, Total Amount on Right */}
+            <div className="bg-slate-50 border-2 border-blue-300 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-inner">
+              {/* Left: Entered Quantity */}
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-slate-500">
+                  {isTamil ? 'எண்ணிக்கை' : 'Quantity'}
+                </div>
+                <div className="text-3xl font-black text-slate-900 font-mono tracking-tight flex items-baseline gap-1 truncate">
+                  <span>{eggQuantityStr || '0'}</span>
+                  <span className="text-xs font-bold text-slate-500 font-sans">
+                    {t('eggs')}
+                  </span>
+                </div>
               </div>
 
-              {/* Automatic Total Calculation */}
-              <div className="text-right">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">{t('totalAmount')}</div>
-                <div className="text-3xl md:text-4xl font-black text-blue-700 font-mono">
-                  ₹{calculatedTotal}
+              {/* Divider */}
+              <div className="h-9 w-px bg-slate-200 shrink-0" />
+
+              {/* Right: Calculated Total Amount */}
+              <div className="text-right shrink-0">
+                <div className="text-[11px] font-bold text-slate-500">
+                  {t('totalAmount')}
+                </div>
+                <div className="text-2xl font-black text-blue-700 font-mono">
+                  ₹{calculatedTotal.toLocaleString('en-IN')}
                 </div>
               </div>
             </div>
 
             {/* Stock Insufficient Warning */}
             {isStockInsufficient && (
-              <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3 text-sm text-rose-700 font-bold flex items-center gap-2 animate-in fade-in">
-                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-xs text-rose-700 font-bold flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{t('insufficientStock', { stock: remainingStock })}</span>
               </div>
             )}
 
             {billingError && (
-              <div className="bg-rose-50 border-2 border-rose-200 rounded-2xl p-3 text-sm text-rose-700 font-bold flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-xs text-rose-700 font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 <span>{billingError}</span>
               </div>
             )}
           </div>
 
-          {/* Quick-Add Quantity Chips */}
+          {/* Quick-Add Quantity Chips - Clean 5-Column Grid */}
           <div className="space-y-1.5">
-            <div className="text-xs font-black text-slate-500 uppercase px-1">
+            <div className="text-[11px] font-black text-slate-500 uppercase px-1">
               {t('quickQuantities')}
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {quickQuantities.map((qty) => (
                 <button
                   key={qty}
                   type="button"
                   onClick={() => handleSetQuick(qty)}
-                  className={`px-3.5 py-2 rounded-xl font-black text-sm md:text-base transition-all active:scale-95 ${
+                  className={`h-10 rounded-xl font-black text-sm flex items-center justify-center border transition-all active:scale-95 ${
                     eggQuantity === qty
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                      : 'bg-white border-2 border-slate-200 text-slate-800 hover:bg-blue-50 hover:border-blue-300'
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
+                      : 'bg-white hover:bg-blue-50 text-slate-800 border-slate-200 shadow-2xs'
                   }`}
                 >
                   {qty}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={handleKeypadClear}
-                className="px-3.5 py-2 rounded-xl font-black text-sm bg-slate-200 text-slate-800 hover:bg-slate-300 transition-all active:scale-95"
-              >
-                {t('clear')}
-              </button>
             </div>
           </div>
 
           {/* Touch Number Pad for Phone */}
-          <div className="bg-white rounded-3xl p-3 border-2 border-slate-200 shadow-xs">
-            <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white rounded-2xl p-2.5 border-2 border-slate-200 shadow-xs">
+            <div className="grid grid-cols-3 gap-1.5">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                 <button
                   key={d}
                   type="button"
                   onClick={() => handleKeypadDigit(d)}
-                  className="h-14 md:h-16 rounded-2xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl md:text-3xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-xs"
+                  className="h-13 rounded-xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-2xs font-mono"
                 >
                   {d}
                 </button>
@@ -531,7 +540,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadClear}
-                className="h-14 md:h-16 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-sm md:text-base flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
+                className="h-13 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-sm flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
               >
                 {t('clear')}
               </button>
@@ -539,7 +548,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handleKeypadDigit('0')}
-                className="h-14 md:h-16 rounded-2xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl md:text-3xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-xs"
+                className="h-13 rounded-xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-2xs font-mono"
               >
                 0
               </button>
@@ -547,26 +556,26 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadBackspace}
-                className="h-14 md:h-16 rounded-2xl bg-slate-100 hover:bg-rose-50 active:bg-rose-100 text-rose-600 flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
+                className="h-13 rounded-xl bg-slate-100 hover:bg-rose-50 active:bg-rose-100 text-rose-600 flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
               >
-                <Delete className="w-7 h-7" />
+                <Delete className="w-6 h-6" />
               </button>
             </div>
           </div>
 
           {/* Main Action Buttons */}
-          <div className="pt-2 pb-6 space-y-2.5">
+          <div className="pt-1 pb-4">
             <button
               type="button"
               onClick={() => handleCreateBill(true)}
               disabled={isCreatingBill || eggQuantity <= 0 || isStockInsufficient}
-              className={`w-full py-4 md:py-5 px-6 rounded-2xl font-black text-base md:text-lg uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-xl transition-all active:scale-98 ${
+              className={`w-full py-4 px-4 rounded-2xl font-black text-base uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all active:scale-98 ${
                 eggQuantity > 0 && !isStockInsufficient
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/35 ring-4 ring-blue-400/20'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30'
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               }`}
             >
-              <Printer className="w-6 h-6" />
+              <Printer className="w-5 h-5" />
               <span>{isCreatingBill ? t('generatingBill') : t('createAndPrint')}</span>
             </button>
           </div>
@@ -575,26 +584,26 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
       {/* TAB CONTENT: BILL HISTORY */}
       {activeTab === 'history' && (
-        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
+        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
           {/* Search Bar */}
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder={t('searchHistoryPlaceholder')}
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
-              className="w-full bg-white border-2 border-slate-300 rounded-2xl pl-11 pr-4 py-3 text-sm md:text-base font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border-2 border-slate-300 rounded-2xl pl-10 pr-3 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          {/* Bills List */}
-          <div className="flex-1 space-y-3">
+          {/* Bills List - Clean Mobile Alignment */}
+          <div className="flex-1 space-y-2.5">
             {filteredBills.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 text-center border-2 border-slate-200 text-slate-500 space-y-2">
-                <Egg className="w-12 h-12 mx-auto text-slate-300" />
-                <p className="font-black text-sm md:text-base text-slate-700">{t('noBillsFound')}</p>
-                <p className="text-xs md:text-sm font-bold text-slate-500">
+              <div className="bg-white rounded-2xl p-6 text-center border-2 border-slate-200 text-slate-500 space-y-1.5">
+                <Egg className="w-10 h-10 mx-auto text-slate-300" />
+                <p className="font-black text-sm text-slate-700">{t('noBillsFound')}</p>
+                <p className="text-xs font-bold text-slate-500">
                   {t('noBillsRecordedYet')}
                 </p>
               </div>
@@ -602,38 +611,40 @@ export const EmployeeDashboard: React.FC<Props> = ({
               filteredBills.map((b) => (
                 <div
                   key={b.billId}
-                  className="bg-white rounded-2xl p-4 border-2 border-slate-200 shadow-xs flex items-center justify-between hover:border-blue-300 transition-all"
+                  className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs flex items-center justify-between gap-2.5 hover:border-blue-300 transition-all"
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-mono font-black text-sm md:text-base text-blue-900">
+                  {/* Left Details */}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono font-black text-sm text-blue-900">
                         {t('billNo')} #{b.billNumber}
                       </span>
                       <span
-                        className={`text-xs px-2.5 py-0.5 rounded-full font-black ${
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
                           b.syncStatus === 'synced'
                             ? 'bg-emerald-100 text-emerald-800'
                             : 'bg-amber-100 text-amber-800'
                         }`}
                       >
-                        {b.syncStatus === 'synced' ? t('synced') : t('offline')}
+                        {b.syncStatus === 'synced' ? (isTamil ? 'ஒத்திசைக்கப்பட்டது' : 'Synced') : (isTamil ? 'ஆஃப்லைன்' : 'Offline')}
                       </span>
                     </div>
 
-                    <div className="text-sm font-bold text-slate-700">
+                    <div className="text-xs font-bold text-slate-700 truncate">
                       <span>{b.eggQuantity} {t('eggs')}</span>
                       <span className="text-slate-400"> • </span>
                       <span>₹{b.pricePerEgg}{t('perEgg')}</span>
                     </div>
 
-                    <div className="text-xs md:text-sm font-bold text-slate-500">
+                    <div className="text-[11px] font-bold text-slate-500 truncate">
                       {b.time} • {t('staff')}: {b.employeeName}
                     </div>
                   </div>
 
-                  <div className="text-right space-y-2">
-                    <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
-                      ₹{b.totalAmount}
+                  {/* Right Amount & Reprint Button (Never clipped) */}
+                  <div className="text-right shrink-0 space-y-1.5">
+                    <div className="font-black text-base text-slate-900 font-mono">
+                      ₹{b.totalAmount.toLocaleString('en-IN')}
                     </div>
                     <button
                       type="button"
@@ -641,9 +652,9 @@ export const EmployeeDashboard: React.FC<Props> = ({
                         setIsReceiptDraft(false);
                         setActiveReceiptBill(b);
                       }}
-                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs md:text-sm font-black px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-blue-200 active:scale-95 transition-all"
+                      className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all"
                     >
-                      <Printer className="w-4 h-4" />
+                      <Printer className="w-3.5 h-3.5" />
                       <span>{t('reprint')}</span>
                     </button>
                   </div>
