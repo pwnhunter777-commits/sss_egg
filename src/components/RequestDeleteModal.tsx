@@ -3,14 +3,11 @@ import { Bill } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { playDeleteAlertSound } from '../lib/soundNotification';
-import { getLocalSettings } from '../lib/offlineStorage';
-import { Trash2, X, Send, CheckCircle2, MessageSquare, BellRing } from 'lucide-react';
+import { Trash2, X, Send, CheckCircle2, BellRing } from 'lucide-react';
 
 interface Props {
   bill: Bill;
   employeeName: string;
-  ownerPhone?: string;
-  agencyName?: string;
   onClose: () => void;
   onRequestSubmitted: (updatedBill: Bill) => void;
 }
@@ -18,8 +15,6 @@ interface Props {
 export const RequestDeleteModal: React.FC<Props> = ({
   bill,
   employeeName,
-  ownerPhone,
-  agencyName,
   onClose,
   onRequestSubmitted,
 }) => {
@@ -27,43 +22,17 @@ export const RequestDeleteModal: React.FC<Props> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [updatedBillState, setUpdatedBillState] = useState<Bill | null>(null);
-
-  // Derive phone and agency name
-  const localSettings = getLocalSettings();
-  const effectivePhone = ownerPhone || localSettings.phone || '';
-  const effectiveAgency = agencyName || localSettings.agencyName || 'SSS EGG AGENCY';
-
-  const cleanPhone = effectivePhone.replace(/[^0-9]/g, '');
-  const intlPhone = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
-
-  // Format the direct alert message for the Owner
-  const messageText = `🚨 *${effectiveAgency} - BILL DELETE REQUEST*\n` +
-    `📋 *Bill No:* #${bill.billNumber}\n` +
-    `🥚 *Eggs Quantity:* ${bill.eggQuantity} Eggs\n` +
-    `💰 *Total Amount:* ₹${Math.round(bill.totalAmount)}\n` +
-    `⏰ *Time:* ${bill.time} (${bill.date})\n` +
-    `👤 *Staff:* ${employeeName || 'Staff'}\n\n` +
-    `⚠️ *Action:* Staff requested to delete this bill. Please review and approve/reject in Owner Portal.`;
-
-  const waLink = intlPhone
-    ? `https://wa.me/${intlPhone}?text=${encodeURIComponent(messageText)}`
-    : `https://wa.me/?text=${encodeURIComponent(messageText)}`;
-
-  const smsLink = cleanPhone
-    ? `sms:${cleanPhone}?body=${encodeURIComponent(messageText)}`
-    : `sms:?body=${encodeURIComponent(messageText)}`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
-    // 1. Play the distinctive delete alert notification sound immediately!
+    // 1. Play the distinctive delete alert notification sound immediately
     playDeleteAlertSound();
 
     try {
-      // 2. Submit delete request in database & local storage (triggers Owner alert)
+      // 2. Submit delete request directly to database & local storage (notifies Owner in real-time)
       const updated = await EggAgencyService.requestBillDelete(
         bill.billId,
         employeeName || 'Staff',
@@ -72,15 +41,11 @@ export const RequestDeleteModal: React.FC<Props> = ({
       );
 
       if (updated) {
-        setUpdatedBillState(updated);
         setIsSuccess(true);
-
-        // 3. Automatically attempt to dispatch message to the Owner via WhatsApp
-        try {
-          window.open(waLink, '_blank');
-        } catch {
-          // Popup blocked, user can still use direct buttons on the success screen
-        }
+        setTimeout(() => {
+          onRequestSubmitted(updated);
+          onClose();
+        }, 1500);
       } else {
         setError('Failed to submit delete request. Please try again.');
       }
@@ -119,65 +84,28 @@ export const RequestDeleteModal: React.FC<Props> = ({
         </div>
 
         {isSuccess ? (
-          <div className="p-6 text-center space-y-4 animate-fadeIn">
-            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="p-7 text-center space-y-3.5 animate-fadeIn">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div className="space-y-1">
               <h4 className="text-lg font-black text-slate-900">
-                {isTamil ? 'நீக்குதல் கோரிக்கை அனுப்பப்பட்டது!' : 'Request & Alert Sent to Owner!'}
+                {isTamil ? 'நீக்குதல் கோரிக்கை அனுப்பப்பட்டது!' : 'Delete Request Sent to Owner!'}
               </h4>
               <p className="text-xs font-bold text-slate-600 flex items-center justify-center gap-1.5">
                 <BellRing className="w-3.5 h-3.5 text-rose-600 animate-bounce" />
                 <span>
                   {isTamil
-                    ? 'உரிமையாளருக்கு பிரத்யேக ஒலி எச்சரிக்கையுடன் அறிவிக்கப்பட்டது.'
-                    : 'Dispatched to Owner Portal with distinctive warning sound.'}
+                    ? 'உரிமையாளர் தளத்திற்கு ஒலி எச்சரிக்கையுடன் கோரிக்கை சென்றுள்ளது.'
+                    : 'Alert notification dispatched to Owner Portal with sound alert.'}
                 </span>
               </p>
             </div>
 
-            {/* Direct Message to Owner Card */}
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3.5 space-y-2.5 text-left">
-              <div className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center justify-between">
-                <span>{isTamil ? 'உரிமையாளருக்கு தகவல் அனுப்ப' : 'Message Owner Directly'}</span>
-                {effectivePhone && (
-                  <span className="font-mono text-slate-700 font-bold">{effectivePhone}</span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href={waLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                >
-                  <MessageSquare className="w-4 h-4 shrink-0" />
-                  <span>WhatsApp</span>
-                </a>
-
-                <a
-                  href={smsLink}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                >
-                  <Send className="w-4 h-4 shrink-0" />
-                  <span>SMS</span>
-                </a>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (updatedBillState) onRequestSubmitted(updatedBillState);
-                onClose();
-              }}
-              className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider transition-all active:scale-95 shadow-md"
-            >
-              {t('done')}
-            </button>
+            <p className="text-xs text-slate-400 font-medium">
+              {isTamil ? 'தானாக மூடப்படுகிறது...' : 'Closing...'}
+            </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-4 space-y-3.5">
@@ -201,13 +129,13 @@ export const RequestDeleteModal: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Sound alert note */}
+            {/* In-App Notification alert note */}
             <div className="bg-rose-50 border border-rose-200 rounded-2xl p-2.5 flex items-center gap-2 text-rose-900 text-xs font-bold">
               <BellRing className="w-4 h-4 text-rose-600 shrink-0 animate-pulse" />
               <span>
                 {isTamil
-                  ? 'உரிமையாளருக்கு நேரடி மெசேஜ் மற்றும் பிரத்யேக எச்சரிக்கை ஒலி அனுப்பப்படும்.'
-                  : 'Sends direct message to Owner with a distinct warning notification sound.'}
+                  ? 'உரிமையாளர் தளத்திற்கு பிரத்யேக எச்சரிக்கை ஒலியுடன் நேரடி கோரிக்கை அனுப்பப்படும்.'
+                  : 'Sends an immediate alert request with notification sound to the Owner Portal.'}
               </span>
             </div>
 
@@ -238,7 +166,7 @@ export const RequestDeleteModal: React.FC<Props> = ({
                 <span>
                   {isSubmitting
                     ? '...'
-                    : (isTamil ? 'கோரிக்கை & தகவல் அனுப்பு' : 'Send Request to Owner')}
+                    : (isTamil ? 'உரிமையாளருக்கு அனுப்பு' : 'Send Request to Owner')}
                 </span>
               </button>
             </div>

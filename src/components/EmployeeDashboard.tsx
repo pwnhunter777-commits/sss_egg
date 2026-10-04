@@ -705,8 +705,6 @@ export const EmployeeDashboard: React.FC<Props> = ({
         <RequestDeleteModal
           bill={billToDeleteRequest}
           employeeName={billToDeleteRequest.employeeName || 'Staff'}
-          ownerPhone={settings.phone}
-          agencyName={settings.agencyName}
           onClose={() => setBillToDeleteRequest(null)}
           onRequestSubmitted={(updatedBill) => {
             setBills((prev) =>
