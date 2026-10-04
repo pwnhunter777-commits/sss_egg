@@ -54,6 +54,7 @@ export interface AgencySettings {
   employeePin: string;
   phone: string;
   address: string;
+  upiId?: string;
 }
 
 export interface PrinterDevice {

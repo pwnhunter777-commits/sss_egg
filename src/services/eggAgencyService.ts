@@ -219,6 +219,9 @@ export const EggAgencyService = {
       totalAmount = eggQuantity * pricePerEgg;
     }
 
+    // Round to nearest integer (e.g. 1.45 -> 1, 1.65 -> 2)
+    totalAmount = Math.round(totalAmount);
+
     const costOfEggsSold = eggQuantity * purchaseCostPerEgg;
     const profit = Math.max(0, totalAmount - costOfEggsSold);
 

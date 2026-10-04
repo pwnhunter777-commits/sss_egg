@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AgencySettings } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { resetAllLocalData, getTodayDateString, setLastActiveDate } from '../lib/offlineStorage';
-import { Settings, Check, X, Shield, KeyRound, Phone, MapPin, Store, RefreshCw, Trash2, Download } from 'lucide-react';
+import { Settings, Check, X, Shield, KeyRound, Phone, MapPin, Store, RefreshCw, Trash2, Download, QrCode } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -23,6 +23,7 @@ export const OwnerSettingsModal: React.FC<Props> = ({
   const [employeePin, setEmployeePin] = useState(settings.employeePin || '1234');
   const [phone, setPhone] = useState(settings.phone || '+91 98765 43210');
   const [address, setAddress] = useState(settings.address || 'Wholesale Egg Market, Main Road');
+  const [upiId, setUpiId] = useState(settings.upiId || 'nazirahamed0003@okhdfcbank');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -75,6 +76,7 @@ export const OwnerSettingsModal: React.FC<Props> = ({
       employeePin,
       phone,
       address,
+      upiId: upiId.trim() || 'nazirahamed0003@okhdfcbank',
     };
 
     try {
@@ -182,6 +184,26 @@ export const OwnerSettingsModal: React.FC<Props> = ({
               className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 text-base font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               placeholder="+91..."
             />
+          </div>
+
+          {/* UPI ID for Bill Payment QR */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-black text-slate-800 flex items-center gap-2">
+              <QrCode className="w-4 h-4 text-emerald-600" />
+              <span>{isTamil ? 'யுபிஐ ஐடி (பில் QR கோடு)' : 'UPI ID (Bill Payment QR)'}</span>
+            </label>
+            <input
+              type="text"
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+              className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 text-base font-mono font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 focus:outline-hidden"
+              placeholder="nazirahamed0003@okhdfcbank"
+            />
+            <p className="text-[11px] font-bold text-slate-500">
+              {isTamil
+                ? 'பில்லில் இந்த யுபிஐ ஐடிக்கு ஸ்கேன் செய்து பணம் செலுத்தும் QR தோன்றும்.'
+                : 'Customer scans this QR code on the bill to pay via GPay/PhonePe/Paytm.'}
+            </p>
           </div>
 
           {/* Address */}

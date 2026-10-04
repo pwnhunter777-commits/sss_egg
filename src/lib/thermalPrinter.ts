@@ -126,14 +126,8 @@ export class ThermalPrinterService {
     appendBytes([ESC, 0x21, 0x30]);
     appendLine(settings.agencyName || 'SSS EGG AGENCY');
 
-    // Normal font: ESC ! 0x00
-    appendBytes([ESC, 0x21, 0x00]);
-    if (settings.phone) {
-      appendLine('Phone: ' + settings.phone);
-    }
-    if (settings.address) {
-      appendLine(settings.address);
-    }
+    // Bold font emphasized on: ESC E 1
+    appendBytes([ESC, 0x45, 0x01]);
 
     // Divider
     appendLine('='.repeat(lineWidth));
@@ -141,18 +135,12 @@ export class ThermalPrinterService {
     // 3. Left alignment: ESC a 0
     appendBytes([ESC, 0x61, 0x00]);
 
-    appendLine(padRow('Bill No: #' + bill.billNumber, bill.date));
-    appendLine(padRow('Time: ' + bill.time, 'Staff: ' + (bill.employeeName || 'Employee')));
-
-    // Divider
-    appendLine('-'.repeat(lineWidth));
-
     // Line items
     appendLine(padRow('ITEM / DESCRIPTION', 'AMOUNT'));
     appendLine('-'.repeat(lineWidth));
 
     const itemDesc = `${bill.eggQuantity} Eggs @ Rs.${bill.pricePerEgg}/egg`;
-    const itemTotal = `Rs.${bill.totalAmount}`;
+    const itemTotal = `Rs.${Math.round(bill.totalAmount)}`;
     appendLine(padRow(itemDesc, itemTotal));
 
     if (bill.eggQuantity >= 30) {
@@ -165,13 +153,40 @@ export class ThermalPrinterService {
 
     // Bold Total
     appendBytes([ESC, 0x21, 0x20]); // Double width
-    appendLine(padRow('TOTAL:', `Rs.${bill.totalAmount}`));
+    appendLine(padRow('TOTAL:', `Rs.${Math.round(bill.totalAmount)}`));
     appendBytes([ESC, 0x21, 0x00]); // Reset
+
+    appendLine('-'.repeat(lineWidth));
+
+    // UPI QR Code Section
+    const upiId = settings.upiId || 'nazirahamed0003@okhdfcbank';
+    const amount = Math.round(bill.totalAmount);
+    const payeeName = settings.agencyName || 'SSS EGG AGENCY';
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('Egg Bill #' + bill.billNumber)}`;
+
+    // Center alignment
+    appendBytes([ESC, 0x61, 0x01]);
+
+    // Standard ESC/POS QR code sequence
+    // 1. QR Code Model 2: GS ( k 4 0 49 65 50 0
+    appendBytes([GS, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00]);
+    // 2. Set QR module size (5 for 58mm, 6 for 80mm): GS ( k 3 0 49 67 <size>
+    const qrModuleSize = lineWidth > 32 ? 6 : 5;
+    appendBytes([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, qrModuleSize]);
+    // 3. Error correction level M (49): GS ( k 3 0 49 69 49
+    appendBytes([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31]);
+    // 4. Store data in symbol storage: GS ( k <len_low> <len_high> 49 80 48 <data>
+    const dataLen = upiUrl.length + 3;
+    const pL = dataLen % 256;
+    const pH = Math.floor(dataLen / 256);
+    appendBytes([GS, 0x28, 0x6b, pL, pH, 0x31, 0x50, 0x30]);
+    appendText(upiUrl);
+    // 5. Print the QR symbol: GS ( k 3 0 49 81 48
+    appendBytes([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30]);
 
     appendLine('='.repeat(lineWidth));
 
-    // Center alignment for footer
-    appendBytes([ESC, 0x61, 0x01]);
+    // Footer
     appendLine('Thank You! Visit Again');
     appendLine('*** Fresh & Quality Eggs ***');
 

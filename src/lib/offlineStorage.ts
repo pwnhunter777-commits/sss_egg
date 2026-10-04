@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: AgencySettings = {
   employeePin: '1234',
   phone: '+91 98765 43210',
   address: 'Shop #12, Wholesale Egg Market, Main Road',
+  upiId: 'nazirahamed0003@okhdfcbank',
 };
 
 export const DEFAULT_PRINTER: PrinterDevice = {
@@ -201,7 +202,14 @@ export function deductLocalStock(date: string, quantity: number): DailyStock | n
 export function getLocalSettings(): AgencySettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+        upiId: parsed.upiId || DEFAULT_SETTINGS.upiId,
+      };
+    }
   } catch {}
   return DEFAULT_SETTINGS;
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import QRCode from 'qrcode';
 import { Bill, AgencySettings, PrinterDevice } from '../types';
 import { thermalPrinter } from '../lib/thermalPrinter';
 import { playPrintClickSound } from '../lib/soundNotification';
@@ -30,10 +31,32 @@ export const ThermalReceipt: React.FC<Props> = ({
   const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>(printer.paperWidth || '58mm');
   const [printError, setPrintError] = useState<string | null>(null);
   const [currentBill, setCurrentBill] = useState<Bill>(bill);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
+
+  const upiId = settings.upiId || 'nazirahamed0003@okhdfcbank';
+  const roundedAmount = Math.round(currentBill.totalAmount);
+  const agencyTitle = isTamil && settings.agencyName === 'SSS EGG AGENCY'
+    ? t('agencyNameDefault')
+    : settings.agencyName || 'SSS EGG AGENCY';
 
   useEffect(() => {
     setCurrentBill(bill);
   }, [bill]);
+
+  // Generate UPI QR code for the bill amount
+  useEffect(() => {
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(agencyTitle)}&am=${roundedAmount}&cu=INR&tn=${encodeURIComponent('Egg Bill #' + currentBill.billNumber)}`;
+    QRCode.toDataURL(upiUrl, {
+      width: 160,
+      margin: 1,
+      color: {
+        dark: '#000000',
+        light: '#ffffff',
+      },
+    })
+      .then((url) => setQrDataUrl(url))
+      .catch((err) => console.error('Failed to generate UPI QR code', err));
+  }, [currentBill.billNumber, roundedAmount, upiId, agencyTitle]);
 
   const handlePrint = async () => {
     setPrinting(true);
@@ -93,59 +116,58 @@ export const ThermalReceipt: React.FC<Props> = ({
         <div className="flex-1 overflow-y-auto p-4 bg-slate-200/80 flex justify-center">
           <div
             id="thermal-receipt-print-area"
-            className={`receipt-paper bg-white text-black p-4 text-xs font-mono transition-all duration-200 ${
+            className={`receipt-paper bg-white text-black p-4 text-xs font-mono font-black transition-all duration-200 ${
               paperWidth === '58mm' ? 'w-[280px]' : 'w-[330px]'
-            } border-t-4 border-dashed border-slate-300 relative`}
+            } border-t-4 border-dashed border-slate-400 relative select-none`}
           >
-            {/* Combined Header & Bill Info in One Div */}
-            <div className="border-b border-dashed border-gray-500 pb-2 mb-2 space-y-2">
-              <div className="text-center space-y-0.5">
-                <h2 className="text-lg md:text-xl font-black tracking-tight uppercase">
-                  {isTamil && settings.agencyName === 'SSS EGG AGENCY'
-                    ? t('agencyNameDefault')
-                    : settings.agencyName || t('agencyNameDefault')}
-                </h2>
-                {settings.phone && (
-                  <p className="text-xs md:text-sm font-bold text-gray-800">Phone: {settings.phone}</p>
-                )}
-                {settings.address && (
-                  <p className="text-xs font-bold text-gray-700 leading-tight">{settings.address}</p>
-                )}
-              </div>
-
-              <div className="border-t border-dashed border-gray-400 pt-1.5 space-y-1 text-xs md:text-sm font-bold">
-                <div className="flex justify-between font-black">
-                  <span>{t('billNo')}: #{currentBill.billNumber}</span>
-                  <span>{currentBill.date}</span>
-                </div>
-                <div className="flex justify-between text-gray-800">
-                  <span>{t('time')}: {currentBill.time}</span>
-                  <span>{t('staff')}: {currentBill.employeeName}</span>
-                </div>
-              </div>
+            {/* Store Header */}
+            <div className="border-b-2 border-dashed border-black pb-2 mb-2 text-center">
+              <h2 className="text-lg md:text-xl font-black tracking-tight uppercase text-black">
+                {isTamil && settings.agencyName === 'SSS EGG AGENCY'
+                  ? t('agencyNameDefault')
+                  : settings.agencyName || t('agencyNameDefault')}
+              </h2>
             </div>
 
-            {/* Line Items */}
-            <div className="my-3">
-              <div className="flex justify-between font-black border-b border-gray-400 pb-1 mb-2 text-xs md:text-sm">
-                <span>{t('items')}</span>
-                <span>{t('total')}</span>
-              </div>
+            {/* Bill Body: Left Side (Items & Total Spans) + Right Side (QR Image) */}
+            <div className="flex items-center justify-between gap-3 my-2.5">
+              {/* Left Side: Items, Line Item Spans, and Net Total */}
+              <div className="flex-1 min-w-0 space-y-2">
+                {/* Header Spans */}
+                <div className="flex justify-between font-black border-b-2 border-black pb-1 text-xs md:text-sm text-black uppercase">
+                  <span className="font-black text-black">{t('items')}</span>
+                  <span className="font-black text-black">{t('total')}</span>
+                </div>
 
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center font-bold">
-                  <div className="text-sm md:text-base font-black">{currentBill.eggQuantity} {t('eggs')}</div>
-                  <div className="text-base md:text-lg font-black font-mono">₹{currentBill.totalAmount}</div>
+                {/* Line Item Spans */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center font-black text-black">
+                    <span className="text-xs md:text-sm font-black text-black truncate">{currentBill.eggQuantity} {t('eggs')}</span>
+                    <span className="text-xs md:text-sm font-black font-mono text-black">₹{Math.round(currentBill.totalAmount)}</span>
+                  </div>
+                </div>
+
+                {/* Net Total Spans */}
+                <div className="border-t-2 border-dashed border-black pt-1.5">
+                  <div className="flex justify-between items-center font-black text-black">
+                    <span className="uppercase text-xs md:text-sm font-black text-black">{t('netTotal')}</span>
+                    <span className="text-sm md:text-base font-black font-mono text-black">₹{Math.round(currentBill.totalAmount)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Total Box */}
-            <div className="border-t-2 border-dashed border-gray-900 pt-2.5 pb-1.5 my-2">
-              <div className="flex justify-between items-center text-base md:text-lg font-black">
-                <span>{t('netTotal')}</span>
-                <span className="text-xl md:text-2xl font-black font-mono">₹{currentBill.totalAmount}</span>
-              </div>
+              {/* Right Side: QR Code Image */}
+              {qrDataUrl && (
+                <div className="shrink-0 flex items-center justify-center">
+                  <div className="p-1 bg-white border-2 border-black rounded-xl shadow-xs">
+                    <img
+                      src={qrDataUrl}
+                      alt="UPI Payment QR Code"
+                      className="w-24 h-24 sm:w-26 sm:h-26 object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -171,11 +193,11 @@ export const ThermalReceipt: React.FC<Props> = ({
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div>
             <button
               onClick={handlePrint}
               disabled={printing}
-              className="flex-1 bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black py-4 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all text-base"
+              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black py-4 px-5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-98 transition-all text-base"
             >
               <Printer className="w-5 h-5" />
               <span>
@@ -187,13 +209,6 @@ export const ThermalReceipt: React.FC<Props> = ({
                   ? t('confirmAndPrint')
                   : t('printBill')}
               </span>
-            </button>
-
-            <button
-              onClick={onClose}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-black py-4 px-6 rounded-2xl active:scale-98 transition-all text-base"
-            >
-              {t('done')}
             </button>
           </div>
         </div>

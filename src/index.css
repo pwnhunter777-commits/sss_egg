@@ -192,7 +192,13 @@ html[lang="ta"] button,
   .receipt-paper {
     font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
     background: #ffffff;
+    font-weight: 900 !important;
+    color: #000000 !important;
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.15), 0 2px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  .receipt-paper * {
+    font-weight: 900 !important;
+    color: #000000 !important;
   }
 }
 

@@ -131,11 +131,12 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const pricePerEgg = todayPrice?.pricePerEgg || 3;
   const pricePer30Eggs = todayPrice?.pricePer30Eggs || pricePerEgg * 30;
 
-  // Calculated Total Amount
-  const calculatedTotal =
+  // Calculated Total Amount (rounded to integer, e.g. 1.45 -> 1, 1.65 -> 2)
+  const rawTotal =
     eggQuantity >= 30 && pricePer30Eggs > 0
       ? Math.floor(eggQuantity / 30) * pricePer30Eggs + (eggQuantity % 30) * pricePerEgg
       : eggQuantity * pricePerEgg;
+  const calculatedTotal = Math.round(rawTotal);
 
   const remainingStock = todayStock?.remainingStock ?? 0;
   const isStockInsufficient = eggQuantity > 0 && eggQuantity > remainingStock;
@@ -276,33 +277,15 @@ export const EmployeeDashboard: React.FC<Props> = ({
   return (
     <div className="flex-1 flex flex-col bg-slate-100 text-slate-800 overflow-hidden">
       {/* Top Bar Header */}
-      <header className="bg-blue-800 text-white px-3 py-2.5 shadow-md shrink-0">
+      <header className="bg-blue-800 text-white px-3.5 py-3 shadow-md shrink-0">
         <div className="flex items-center justify-between gap-2">
-          {/* Left: Brand & Mode */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20 shrink-0">
-              <Egg className="w-5 h-5 text-amber-300" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="font-black text-sm tracking-tight uppercase truncate leading-tight">
-                {isTamil && settings.agencyName === 'SSS EGG AGENCY'
-                  ? t('agencyNameDefault')
-                  : settings.agencyName || t('agencyNameDefault')}
-              </h1>
-              <div className="flex items-center gap-1.5 text-xs text-blue-200 font-bold truncate mt-0.5">
-                <span className="font-black text-white">{t('employee')}</span>
-                <span>•</span>
-                {isOnline ? (
-                  <span className="text-emerald-300 flex items-center gap-1 font-black">
-                    <Wifi className="w-3 h-3" /> {t('online')}
-                  </span>
-                ) : (
-                  <span className="text-amber-300 flex items-center gap-1 font-black">
-                    <WifiOff className="w-3 h-3" /> {t('offline')}
-                  </span>
-                )}
-              </div>
-            </div>
+          {/* Left: Brand Name only */}
+          <div className="min-w-0 flex-1">
+            <h1 className="font-black text-base tracking-tight uppercase truncate leading-tight">
+              {isTamil && settings.agencyName === 'SSS EGG AGENCY'
+                ? t('agencyNameDefault')
+                : settings.agencyName || t('agencyNameDefault')}
+            </h1>
           </div>
 
           {/* Right: Actions */}
@@ -390,71 +373,51 @@ export const EmployeeDashboard: React.FC<Props> = ({
       {/* TAB CONTENT: BILLING SCREEN */}
       {activeTab === 'billing' && (
         <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
-          {/* Rate & Stock Grid: 2 Equal Columns, Never Wrapping Awkwardly */}
+          {/* Rate & Stock Grid: Minimalist, Clean Big Numbers */}
           <div className="grid grid-cols-2 gap-2.5">
-            {/* Card 1: Today's Rate */}
+            {/* Card 1: Today's Rate (30 eggs & 1 egg) */}
             <div className="bg-white rounded-2xl p-3 border-2 border-blue-100 shadow-xs flex flex-col justify-between">
-              <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
                 {isTamil ? 'இன்றைய விலை' : "Today's Rate"}
               </div>
-              <div className="my-1">
-                <span className="text-xl md:text-2xl font-black text-blue-900 font-mono">
-                  ₹{pricePer30Eggs}
-                </span>
-                <span className="text-xs font-bold text-slate-500 block">
-                  {isTamil ? '/ 30 முட்டை (1 தாரா)' : '/ 30 eggs (1 tara)'}
-                </span>
-              </div>
-              <div className="text-xs font-bold text-slate-600">
-                ₹{pricePerEgg.toFixed(2)} / {t('egg')}
+              <div className="mt-1 flex items-baseline justify-between gap-1">
+                <div>
+                  <div className="text-xl md:text-2xl font-black text-blue-900 font-mono leading-none">
+                    ₹{pricePer30Eggs}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">
+                    {isTamil ? '30 முட்டை' : '30 Eggs'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-lg md:text-xl font-black text-emerald-700 font-mono leading-none">
+                    ₹{pricePerEgg.toFixed(2)}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-500 mt-0.5">
+                    {isTamil ? '1 முட்டை' : '1 Egg'}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Card 2: In Stock */}
             <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs flex flex-col justify-between">
-              <div className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
                 {t('inStock')}
               </div>
-              <div className="my-1">
-                <span className="text-xl md:text-2xl font-black text-slate-900 font-mono">
+              <div className="mt-1">
+                <div className="text-xl md:text-2xl font-black text-slate-900 font-mono leading-none">
                   {remainingStock.toLocaleString('en-IN')}
-                </span>
-                <span className="text-xs font-bold text-slate-500 block">
+                </div>
+                <div className="text-[10px] font-bold text-slate-500 mt-0.5">
                   {t('eggs')}
-                </span>
-              </div>
-              <div>
-                <span
-                  className={`text-[11px] font-black px-2 py-0.5 rounded-full inline-block ${
-                    remainingStock > 200
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : remainingStock > 0
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-rose-100 text-rose-800'
-                  }`}
-                >
-                  {remainingStock > 200
-                    ? isTamil ? 'இருப்பு உள்ளது' : 'Available'
-                    : remainingStock > 0
-                    ? isTamil ? 'குறைந்த இருப்பு' : 'Low Stock'
-                    : isTamil ? 'முடிந்தது' : 'Out of Stock'}
-                </span>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Quantity & Calculation Card */}
           <div className="bg-white rounded-2xl p-3.5 border-2 border-slate-200 shadow-xs space-y-2.5">
-            <div className="flex items-center justify-between text-xs font-black text-slate-700">
-              <span>{t('enterEggQty')}</span>
-              {eggQuantity >= 30 && (
-                <span className="text-blue-700 font-mono font-black text-[11px] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">
-                  {Math.floor(eggQuantity / 30)} {Math.floor(eggQuantity / 30) > 1 ? t('trays') : t('tray')}
-                  {eggQuantity % 30 > 0 ? ` + ${eggQuantity % 30} ${t('loose')}` : ''}
-                </span>
-              )}
-            </div>
-
             {/* Large Display Box with Quantity on Left, Total Amount on Right */}
             <div className="bg-slate-50 border-2 border-blue-300 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-inner">
               {/* Left: Entered Quantity */}
@@ -644,7 +607,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                   {/* Right Amount & Reprint Button (Never clipped) */}
                   <div className="text-right shrink-0 space-y-1.5">
                     <div className="font-black text-base text-slate-900 font-mono">
-                      ₹{b.totalAmount.toLocaleString('en-IN')}
+                      ₹{Math.round(b.totalAmount).toLocaleString('en-IN')}
                     </div>
                     <button
                       type="button"
