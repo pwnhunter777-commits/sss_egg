@@ -13,6 +13,7 @@ import { LanguageToggle } from './LanguageToggle';
 import { ThermalReceipt } from './ThermalReceipt';
 import { BluetoothPrinterModal } from './BluetoothPrinterModal';
 import { RequestDeleteModal } from './RequestDeleteModal';
+import { LogoutPinModal } from './LogoutPinModal';
 import { thermalPrinter } from '../lib/thermalPrinter';
 import { playChimeSound, playPrintClickSound } from '../lib/soundNotification';
 import {
@@ -64,6 +65,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const [isReceiptDraft, setIsReceiptDraft] = useState(false);
   const [draftEggQuantity, setDraftEggQuantity] = useState(0);
   const [billToDeleteRequest, setBillToDeleteRequest] = useState<Bill | null>(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Search in history
   const [historySearch, setHistorySearch] = useState('');
@@ -313,7 +315,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
             {/* Logout Button */}
             <button
               type="button"
-              onClick={onLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors"
               title={t('logout')}
             >
@@ -712,6 +714,16 @@ export const EmployeeDashboard: React.FC<Props> = ({
             );
             setBillToDeleteRequest(null);
           }}
+        />
+      )}
+
+      {/* Logout PIN Confirmation Modal */}
+      {showLogoutModal && (
+        <LogoutPinModal
+          role="employee"
+          settings={settings}
+          onConfirmLogout={onLogout}
+          onClose={() => setShowLogoutModal(false)}
         />
       )}
     </div>

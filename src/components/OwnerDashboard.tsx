@@ -16,6 +16,7 @@ import { DailyPriceModal } from './DailyPriceModal';
 import { StockImportModal } from './StockImportModal';
 import { OwnerSettingsModal } from './OwnerSettingsModal';
 import { ThermalReceipt } from './ThermalReceipt';
+import { LogoutPinModal } from './LogoutPinModal';
 import {
   Egg,
   LogOut,
@@ -69,6 +70,7 @@ export const OwnerDashboard: React.FC<Props> = ({
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeReceiptBill, setActiveReceiptBill] = useState<Bill | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
@@ -295,7 +297,7 @@ export const OwnerDashboard: React.FC<Props> = ({
             {/* Logout */}
             <button
               type="button"
-              onClick={onLogout}
+              onClick={() => setShowLogoutModal(true)}
               className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors"
               title={t('logout')}
             >
@@ -939,6 +941,15 @@ export const OwnerDashboard: React.FC<Props> = ({
           printer={printer}
           hidePrintButton={true}
           onClose={() => setActiveReceiptBill(null)}
+        />
+      )}
+
+      {showLogoutModal && (
+        <LogoutPinModal
+          role="owner"
+          settings={settings}
+          onConfirmLogout={onLogout}
+          onClose={() => setShowLogoutModal(false)}
         />
       )}
     </div>
