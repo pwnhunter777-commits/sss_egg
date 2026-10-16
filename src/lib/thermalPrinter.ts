@@ -156,10 +156,10 @@ export class ThermalPrinterService {
 
     appendLine('-'.repeat(lineWidth));
 
-    // Bold Total
-    appendBytes([ESC, 0x21, 0x20]); // Double width
+    // Bold Big Total (Double width & Double height: 0x30)
+    appendBytes([ESC, 0x21, 0x30]);
     appendLine(padRow('TOTAL:', `Rs.${Math.round(bill.totalAmount)}`));
-    appendBytes([ESC, 0x21, 0x00]); // Reset
+    appendBytes([ESC, 0x21, 0x00]); // Reset to normal size
 
     appendLine('-'.repeat(lineWidth));
 

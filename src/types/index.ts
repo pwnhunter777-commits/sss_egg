@@ -73,3 +73,11 @@ export interface PrinterDevice {
   paperWidth: '58mm' | '80mm';
   autoPrintOnBill: boolean;
 }
+
+export interface ShopkeeperContact {
+  id: string;
+  name: string;
+  phone: string;
+  updatedAt: string;
+}
+

@@ -63,6 +63,15 @@ export interface Translations {
   insufficientStock: string;
   pleaseEnterQty: string;
   reprint: string;
+  shareWhatsApp: string;
+  shareWhatsAppPdf: string;
+  downloadPdf: string;
+  whatsappSender: string;
+  shopkeeperPhone: string;
+  changePhone: string;
+  savedOnPhone: string;
+  billSentViaWhatsApp: string;
+  enterShopkeeperPhoneFirst: string;
   noBillsFound: string;
   noBillsRecordedYet: string;
   searchHistoryPlaceholder: string;
@@ -224,6 +233,15 @@ export const translations: Record<Language, Translations> = {
     insufficientStock: 'Insufficient stock! Only {stock} eggs available.',
     pleaseEnterQty: 'Please enter egg quantity',
     reprint: 'Reprint',
+    shareWhatsApp: 'WhatsApp',
+    shareWhatsAppPdf: 'Share Bill via WhatsApp (PDF)',
+    downloadPdf: 'Download PDF',
+    whatsappSender: 'WhatsApp Sender',
+    shopkeeperPhone: 'Shopkeeper WhatsApp Number',
+    changePhone: 'Change',
+    savedOnPhone: 'Saved on employee phone only (Never in database)',
+    billSentViaWhatsApp: 'Bill sent to WhatsApp!',
+    enterShopkeeperPhoneFirst: 'Please enter shopkeeper WhatsApp number first',
     noBillsFound: 'No bills found matching your search',
     noBillsRecordedYet: 'No bills recorded yet for today.',
     searchHistoryPlaceholder: 'Search by bill #, time, eggs...',
@@ -378,6 +396,15 @@ export const translations: Record<Language, Translations> = {
     insufficientStock: 'இருப்பு போதாது! {stock} முட்டைகள் மட்டுமே உள்ளன.',
     pleaseEnterQty: 'முட்டை எண்ணிக்கையை உள்ளிடவும்',
     reprint: 'மறு அச்சு',
+    shareWhatsApp: 'வாட்ஸ்அப்',
+    shareWhatsAppPdf: 'வாட்ஸ்அப்பில் பில் அனுப்பு (PDF)',
+    downloadPdf: 'PDF பதிவிறக்கு',
+    whatsappSender: 'வாட்ஸ்அப் அமைப்பாளர்',
+    shopkeeperPhone: 'கடைக்காரர் வாட்ஸ்அப் எண்',
+    changePhone: 'மாற்று',
+    savedOnPhone: 'போன் மெமரியில் மட்டுமே சேமிக்கப்படும் (தரவுத்தளத்தில் இல்லை)',
+    billSentViaWhatsApp: 'பில் வாட்ஸ்அப்பில் அனுப்பப்பட்டது!',
+    enterShopkeeperPhoneFirst: 'முதலில் கடைக்காரர் வாட்ஸ்அப் எண்ணை அமைக்கவும்',
     noBillsFound: 'பில்கள் எதுவும் கிடைக்கவில்லை',
     noBillsRecordedYet: 'இன்று இதுவரை பில்கள் எதுவும் இல்லை.',
     searchHistoryPlaceholder: 'பில் எண், நேரம், எண்ணிக்கை மூலம் தேடுக...',

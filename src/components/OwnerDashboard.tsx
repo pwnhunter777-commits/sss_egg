@@ -498,27 +498,17 @@ export const OwnerDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowPriceModal(true)}
-              className="bg-white hover:bg-blue-50/60 p-4 rounded-3xl border-2 border-blue-200 shadow-xs flex items-center justify-between active:scale-98 transition-all text-left"
+              className="bg-white hover:bg-blue-50/60 p-4 rounded-3xl border-2 border-blue-200 shadow-xs flex items-center justify-center active:scale-98 transition-all text-center"
             >
-              <div>
-                <div className="text-sm md:text-base font-black text-slate-900">{t('setPrice')}</div>
-                <div className="text-xs font-bold text-slate-500">
-                  {todayPrice && todayPrice.pricePer30Eggs > 0
-                    ? `₹${todayPrice.pricePer30Eggs} / 1 ${isTamil ? 'தாரா' : 'Tara'}`
-                    : `₹0 (${isTamil ? 'தாரா விலை அமைக்கவும்' : 'Set 1 Tara Price'})`}
-                </div>
-              </div>
+              <div className="text-sm md:text-base font-black text-slate-900">{t('setPrice')}</div>
             </button>
 
             <button
               type="button"
               onClick={() => setShowStockModal(true)}
-              className="bg-white hover:bg-emerald-50/60 p-4 rounded-3xl border-2 border-emerald-200 shadow-xs flex items-center justify-between active:scale-98 transition-all text-left"
+              className="bg-white hover:bg-emerald-50/60 p-4 rounded-3xl border-2 border-emerald-200 shadow-xs flex items-center justify-center active:scale-98 transition-all text-center"
             >
-              <div>
-                <div className="text-sm md:text-base font-black text-slate-900">{t('importStock')}</div>
-                <div className="text-xs font-bold text-slate-500">{remainingStock} {t('inStock')}</div>
-              </div>
+              <div className="text-sm md:text-base font-black text-slate-900">{t('importStock')}</div>
             </button>
           </div>
 
@@ -539,7 +529,7 @@ export const OwnerDashboard: React.FC<Props> = ({
 
                 <div className="text-right">
                   <span className="text-xs md:text-sm bg-blue-900/80 px-3.5 py-1.5 rounded-full text-blue-100 font-black border border-blue-400/30">
-                    1 {t('egg')} = ₹{todayPrice?.pricePerEgg ?? 3}
+                    1 {isTamil ? 'தாரா' : 'Tara'} = ₹{todayPrice?.pricePer30Eggs ?? 0}
                   </span>
                 </div>
               </div>
@@ -553,8 +543,13 @@ export const OwnerDashboard: React.FC<Props> = ({
                   <span>{t('eggsSold')}</span>
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
-                  {totalEggsSold.toLocaleString('en-IN')}{' '}
-                  <span className="text-sm font-bold text-slate-500">{t('eggs')}</span>
+                  {Math.floor(totalEggsSold / 30).toLocaleString('en-IN')}{' '}
+                  <span className="text-sm font-black text-blue-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                  {totalEggsSold % 30 > 0 && (
+                    <span className="text-xs font-bold text-slate-500 ml-1">
+                      (+{totalEggsSold % 30})
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -564,8 +559,13 @@ export const OwnerDashboard: React.FC<Props> = ({
                   <span>{t('remainingStock')}</span>
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
-                  {remainingStock.toLocaleString('en-IN')}{' '}
-                  <span className="text-sm font-bold text-slate-500">{t('eggs')}</span>
+                  {Math.floor(remainingStock / 30).toLocaleString('en-IN')}{' '}
+                  <span className="text-sm font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                  {remainingStock % 30 > 0 && (
+                    <span className="text-xs font-bold text-slate-500 ml-1">
+                      (+{remainingStock % 30})
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -939,6 +939,7 @@ export const OwnerDashboard: React.FC<Props> = ({
           bill={activeReceiptBill}
           settings={settings}
           printer={printer}
+          role="owner"
           hidePrintButton={true}
           onClose={() => setActiveReceiptBill(null)}
         />

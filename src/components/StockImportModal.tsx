@@ -19,31 +19,34 @@ export const StockImportModal: React.FC<Props> = ({
   const { t, isTamil } = useLanguage();
   const todayStr = getTodayDateString();
 
-  // Everyday starts at 0 (or existing stock if already set)
-  const initialStockStr = currentStock?.remainingStock ? String(currentStock.remainingStock) : '0';
-  const [stockQuantityStr, setStockQuantityStr] = useState<string>(initialStockStr);
+  // Stock is measured and entered in 1 Tara (1 Tara = 30 Eggs)
+  const currentTotalEggs = currentStock?.remainingStock ?? 0;
+  const initialTaras =
+    currentTotalEggs > 0 ? String(Math.floor(currentTotalEggs / 30)) : '0';
+  const [taraCountStr, setTaraCountStr] = useState<string>(initialTaras);
 
   // Stock Purchase Price for 30 Eggs / 1 Tara (used for profit calculation)
-  const initial30Price = currentStock?.purchaseCost && currentStock.purchaseCost > 0
-    ? String(Math.round(currentStock.purchaseCost * 30))
-    : '0';
+  const initial30Price =
+    currentStock?.purchaseCost && currentStock.purchaseCost > 0
+      ? String(Math.round(currentStock.purchaseCost * 30))
+      : '0';
   const [pricePer30Str, setPricePer30Str] = useState<string>(initial30Price);
 
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const stockQuantity = parseInt(stockQuantityStr, 10) || 0;
+  const taraCount = parseFloat(taraCountStr) || 0;
   const num30Price = parseFloat(pricePer30Str) || 0;
   const currentEggsSold = currentStock?.eggsSold ?? 0;
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (stockQuantity <= 0) {
+    if (taraCount <= 0) {
       setErrorMsg(
         isTamil
-          ? 'முட்டை எண்ணிக்கையை உள்ளிடவும் (0 விட அதிகமாக)'
-          : 'Egg quantity must be greater than 0'
+          ? '1 தாரா (30 முட்டை) எண்ணிக்கையை உள்ளிடவும் (0 விட அதிகமாக)'
+          : 'Please enter 1 Tara quantity (greater than 0)'
       );
       return;
     }
@@ -57,13 +60,16 @@ export const StockImportModal: React.FC<Props> = ({
     setIsSaving(true);
     setErrorMsg(null);
 
+    // 1 Tara = 30 eggs
+    const totalEggsFromTara = Math.round(taraCount * 30);
+
     // Stock cost per egg for profit calculation
     const calculatedCostPerEgg = num30Price > 0 ? parseFloat((num30Price / 30).toFixed(2)) : 0;
 
-    // Directly sets today's stock to the entered quantity
-    const newOpeningStock = stockQuantity + currentEggsSold;
-    const newImportedStock = stockQuantity;
-    const newRemainingStock = Math.max(0, stockQuantity - currentEggsSold);
+    // Sets today's stock based on entered Taras
+    const newOpeningStock = totalEggsFromTara + currentEggsSold;
+    const newImportedStock = totalEggsFromTara;
+    const newRemainingStock = Math.max(0, totalEggsFromTara - currentEggsSold);
 
     const updatedStock: DailyStock = {
       date: todayStr,
@@ -90,7 +96,11 @@ export const StockImportModal: React.FC<Props> = ({
         }
       }
 
-      setSuccessMsg(t('stockUpdatedSuccess'));
+      setSuccessMsg(
+        isTamil
+          ? `${taraCount} தாரா வெற்றிகரமாக சேர்க்கப்பட்டது!`
+          : `${taraCount} Taras stock successfully saved!`
+      );
       setTimeout(() => {
         onClose();
       }, 700);
@@ -102,12 +112,15 @@ export const StockImportModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in select-none">
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
         {/* Header */}
         <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
-          <h3 className="font-black text-base md:text-lg">{t('stockImportTitle')}</h3>
+          <h3 className="font-black text-base md:text-lg">
+            {isTamil ? 'கையிருப்பு தாராவில் (1 தாரா = 30 முட்டை)' : 'Stock Import (1 Tara = 30 Eggs)'}
+          </h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-full hover:bg-blue-700 text-blue-100 transition-colors"
           >
@@ -116,23 +129,28 @@ export const StockImportModal: React.FC<Props> = ({
         </div>
 
         <form onSubmit={handleImport} className="p-5 space-y-4">
-          {/* Stock Input */}
+          {/* Clean Stock Input in 1 Tara without clutter */}
           <div className="space-y-1.5">
             <label className="text-sm font-black text-slate-800 block">
-              <span>{t('addQuantityLabel')}</span>
+              <span>
+                {isTamil
+                  ? '1 தாரா (30 முட்டை) கையிருப்பு எண்ணிக்கை'
+                  : '1 Tara (30 Eggs) Stock Quantity'}
+              </span>
             </label>
+
             <div className="relative">
               <input
                 type="number"
                 min="0"
                 step="any"
-                value={stockQuantityStr}
+                value={taraCountStr}
                 onChange={(e) => {
-                  setStockQuantityStr(e.target.value);
+                  setTaraCountStr(e.target.value);
                   setErrorMsg(null);
                 }}
                 placeholder="0"
-                className="w-full bg-slate-50 border-2 border-slate-300 rounded-2xl px-4 py-3 text-3xl font-black text-slate-900 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full bg-slate-50 border-2 border-slate-300 focus:border-blue-500 rounded-2xl px-4 py-3 text-3xl font-black text-slate-900 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 autoFocus
               />
             </div>
@@ -144,8 +162,8 @@ export const StockImportModal: React.FC<Props> = ({
               <label className="text-sm font-black text-slate-800 block">
                 <span>
                   {isTamil
-                    ? 'கொள்முதல் அடக்க விலை (30 முட்டை / 1 தாரா)'
-                    : 'Stock Purchase Price (30 Eggs / 1 Tara)'}
+                    ? 'கொள்முதல் அடக்க விலை (1 தாரா / 30 முட்டை)'
+                    : 'Stock Purchase Price (1 Tara / 30 Eggs)'}
                 </span>
               </label>
               <span className="text-[11px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -187,7 +205,7 @@ export const StockImportModal: React.FC<Props> = ({
 
           {successMsg && (
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-2xl text-sm font-bold flex items-center gap-2 animate-in fade-in">
-              <Check className="w-5 h-5 text-emerald-600" />
+              <Check className="w-5 h-5 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -204,7 +222,7 @@ export const StockImportModal: React.FC<Props> = ({
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white font-black text-base py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black text-base py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.98]"
             >
               <span>{isSaving ? t('loading') : t('saveStockButton')}</span>
             </button>

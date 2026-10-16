@@ -1,4 +1,4 @@
-import { Bill, DailyPrice, DailyStock, AgencySettings, PrinterDevice, BillNotification } from '../types';
+import { Bill, DailyPrice, DailyStock, AgencySettings, PrinterDevice, BillNotification, ShopkeeperContact } from '../types';
 
 const STORAGE_KEYS = {
   BILLS: 'sss_bills_v1',
@@ -9,6 +9,8 @@ const STORAGE_KEYS = {
   LAST_BILL_NUMBER: 'sss_last_bill_number_v1',
   ACTIVE_SESSION: 'sss_active_session_v1',
   LAST_ACTIVE_DATE: 'sss_last_active_date_v1',
+  ACTIVE_SHOPKEEPER_PHONE: 'sss_employee_active_shopkeeper_phone_v1',
+  SHOPKEEPER_CONTACTS: 'sss_employee_shopkeeper_contacts_v1',
 };
 
 export const DEFAULT_SETTINGS: AgencySettings = {
@@ -449,5 +451,95 @@ export function resetAllLocalData(): void {
     console.error('Failed to reset all local data', e);
   }
 }
+
+/**
+ * Shopkeeper phone numbers stored strictly on employee phone itself (localStorage),
+ * completely isolated from the database.
+ */
+export function getActiveShopkeeperPhone(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.ACTIVE_SHOPKEEPER_PHONE) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setActiveShopkeeperPhone(phone: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_SHOPKEEPER_PHONE, phone.trim());
+  } catch (e) {
+    console.error('Failed to set active shopkeeper phone', e);
+  }
+}
+
+export function getSavedShopkeeperContacts(): ShopkeeperContact[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.SHOPKEEPER_CONTACTS);
+    if (!raw) {
+      const defaultContacts: ShopkeeperContact[] = [
+        {
+          id: 'shop_1',
+          name: 'Sri Murugan Store',
+          phone: '9876543210',
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'shop_2',
+          name: 'Raja Bakery & Tea',
+          phone: '9443210987',
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      localStorage.setItem(STORAGE_KEYS.SHOPKEEPER_CONTACTS, JSON.stringify(defaultContacts));
+      return defaultContacts;
+    }
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Failed to get shopkeeper contacts', e);
+    return [];
+  }
+}
+
+export function saveShopkeeperContact(name: string, phone: string): ShopkeeperContact {
+  const cleanPhone = phone.trim();
+  const cleanName = name.trim() || 'Shopkeeper';
+  const contacts = getSavedShopkeeperContacts();
+
+  const existingIndex = contacts.findIndex((c) => c.phone === cleanPhone);
+  const updatedContact: ShopkeeperContact = {
+    id: existingIndex >= 0 ? contacts[existingIndex].id : `contact_${Date.now()}`,
+    name: cleanName,
+    phone: cleanPhone,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existingIndex >= 0) {
+    contacts[existingIndex] = updatedContact;
+  } else {
+    contacts.unshift(updatedContact);
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.SHOPKEEPER_CONTACTS, JSON.stringify(contacts));
+    setActiveShopkeeperPhone(cleanPhone);
+  } catch (e) {
+    console.error('Failed to save shopkeeper contact', e);
+  }
+
+  return updatedContact;
+}
+
+export function deleteShopkeeperContact(phone: string): void {
+  try {
+    const contacts = getSavedShopkeeperContacts().filter((c) => c.phone !== phone);
+    localStorage.setItem(STORAGE_KEYS.SHOPKEEPER_CONTACTS, JSON.stringify(contacts));
+    if (getActiveShopkeeperPhone() === phone) {
+      setActiveShopkeeperPhone(contacts.length > 0 ? contacts[0].phone : '');
+    }
+  } catch (e) {
+    console.error('Failed to delete shopkeeper contact', e);
+  }
+}
+
 
 
