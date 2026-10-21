@@ -535,6 +535,8 @@ export const OwnerDashboard: React.FC<Props> = ({
               </div>
             </div>
 
+
+
             {/* Grid 2 Columns: EGGS SOLD & REMAINING STOCK */}
             <div className="grid grid-cols-2 gap-3">
               {/* Card 2: EGGS SOLD */}
@@ -555,8 +557,13 @@ export const OwnerDashboard: React.FC<Props> = ({
 
               {/* Card 3: REMAINING STOCK */}
               <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
+                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
                   <span>{t('remainingStock')}</span>
+                  {todayStock?.importHistory && todayStock.importHistory.length > 0 && (
+                    <span className="text-[10px] font-mono font-black text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full">
+                      {todayStock.importHistory.length} {isTamil ? 'வரவுகள்' : 'entries'}
+                    </span>
+                  )}
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
                   {Math.floor(remainingStock / 30).toLocaleString('en-IN')}{' '}
@@ -657,12 +664,14 @@ export const OwnerDashboard: React.FC<Props> = ({
                         <span className="font-mono font-black text-sm md:text-base text-blue-900">
                           {t('billNo')} #{b.billNumber}
                         </span>
+
                         {b.deleteRequest?.status === 'pending' && (
                           <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-rose-600 text-white animate-pulse">
                             ⚠️ {isTamil ? 'நீக்குதல் கோரிக்கை' : 'Delete Requested'}
                           </span>
                         )}
                       </div>
+
                       <div className="text-sm font-bold text-slate-700">
                         <span>{b.eggQuantity} {t('eggs')}</span>
                         <span className="text-slate-400"> • </span>
@@ -677,13 +686,13 @@ export const OwnerDashboard: React.FC<Props> = ({
 
                     <div className="text-right space-y-2 shrink-0">
                       <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
-                        ₹{b.totalAmount}
+                        ₹{Math.round(b.totalAmount).toLocaleString('en-IN')}
                       </div>
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() => setActiveReceiptBill(b)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
                           title={t('receiptPreview')}
                         >
                           <Eye className="w-4 h-4 shrink-0" />

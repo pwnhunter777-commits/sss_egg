@@ -78,17 +78,15 @@ export async function generateBillPdf(
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
-  doc.text(`Hotel / Shop:`, 58, 41);
+  doc.text(`Payment:`, 58, 41);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(4, 120, 87); // emerald-700
-  doc.text(`${customerName || 'Valued Customer'}`, 58, 47);
-  if (customerPhone) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Phone: +91 ${customerPhone}`, 58, 51.5);
-  }
+  doc.text(`CASH SALE`, 58, 47);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`Staff: ${bill.employeeName || 'Staff'}`, 58, 51.5);
 
   // --- Table Header ---
   doc.setFillColor(30, 41, 59); // slate-800
@@ -223,39 +221,14 @@ export async function createBillPdfFile(
 }
 
 /**
- * Shares the PDF bill directly to WhatsApp
+ * Native file sharing (Web Share API) or download fallback without any external chat dependency
  */
-export async function shareBillToWhatsApp(
+export async function shareBillPdf(
   bill: Bill,
   settings: AgencySettings,
-  customerPhone: string,
-  customerName: string = 'Shopkeeper'
+  customerName: string = 'Valued Customer',
+  customerPhone: string = ''
 ): Promise<{ success: boolean; method: string; error?: string }> {
-  const cleanPhone = formatCleanPhoneNumber(customerPhone);
-  const agencyName = settings.agencyName || 'SSS EGG AGENCY';
-  const taraCount = Math.floor(bill.eggQuantity / 30);
-  const looseCount = bill.eggQuantity % 30;
-  const ratePer30 = bill.pricePer30Eggs || Math.round(bill.pricePerEgg * 30);
-  const itemsText =
-    taraCount > 0
-      ? `${taraCount} Tara (${bill.eggQuantity} Eggs)${looseCount > 0 ? ` + ${looseCount} loose` : ''}`
-      : `${bill.eggQuantity} Eggs`;
-
-  const messageText =
-    `🧾 *${agencyName.toUpperCase()} - EGG INVOICE*\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    (customerName && customerName !== 'Shopkeeper' ? `🏪 *Hotel / Shop:* ${customerName}\n` : '') +
-    `📋 *Bill No:* #${bill.billNumber}\n` +
-    `📅 *Date:* ${bill.date} | ⏰ *Time:* ${bill.time}\n` +
-    `🥚 *Quantity:* ${itemsText}\n` +
-    `💰 *Rate:* ₹${ratePer30} / Tara (30 eggs)\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `💵 *TOTAL AMOUNT:* ₹${Math.round(bill.totalAmount)}\n` +
-    `━━━━━━━━━━━━━━━━━━━━\n` +
-    `📲 *UPI ID:* ${settings.upiId || 'nazirahamed0003@okhdfcbank'}\n\n` +
-    `Please find your detailed PDF bill attached.\n` +
-    `_Thank you! Fresh & quality farm eggs._`;
-
   try {
     const pdfFile = await createBillPdfFile(
       bill,
@@ -264,7 +237,6 @@ export async function shareBillToWhatsApp(
       customerPhone
     );
 
-    // 1. Try native Web Share API with File (Supported on Android Chrome, iOS Safari)
     if (
       typeof navigator !== 'undefined' &&
       navigator.canShare &&
@@ -273,19 +245,18 @@ export async function shareBillToWhatsApp(
       try {
         await navigator.share({
           files: [pdfFile],
-          title: `${agencyName} Bill #${bill.billNumber}`,
-          text: messageText,
+          title: `${settings.agencyName || 'Egg Agency'} Bill #${bill.billNumber}`,
+          text: `Invoice #${bill.billNumber} for ${customerName || 'Customer'} - Total: Rs. ${Math.round(bill.totalAmount)}`,
         });
         return { success: true, method: 'native_share' };
       } catch (shareErr: any) {
-        // User cancelled or share dismissed
         if (shareErr.name === 'AbortError') {
           return { success: false, method: 'cancelled', error: 'Share cancelled' };
         }
       }
     }
 
-    // 2. Fallback: Trigger PDF download and open direct WhatsApp chat
+    // Fallback: Direct PDF download
     const { doc, fileName } = await generateBillPdf(
       bill,
       settings,
@@ -293,15 +264,9 @@ export async function shareBillToWhatsApp(
       customerPhone
     );
     doc.save(fileName);
-
-    const waUrl = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageText)}`
-      : `https://wa.me/?text=${encodeURIComponent(messageText)}`;
-    window.open(waUrl, '_blank');
-
-    return { success: true, method: 'download_and_whatsapp' };
+    return { success: true, method: 'download' };
   } catch (err: any) {
-    console.error('WhatsApp share error', err);
+    console.error('Bill share error', err);
     return { success: false, method: 'error', error: err.message || 'Failed to share' };
   }
 }

@@ -5,22 +5,19 @@ import {
   DailyStock,
   AgencySettings,
   PrinterDevice,
-  ShopkeeperContact,
 } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import {
   formatTime,
   getTodayDateString,
   getNextBillNumber,
-  getActiveShopkeeperPhone,
-  setActiveShopkeeperPhone,
-  getSavedShopkeeperContacts,
 } from '../lib/offlineStorage';
-import { shareBillToWhatsApp } from '../lib/billPdfGenerator';
+import { downloadBillPdf } from '../lib/billPdfGenerator';
+import { thermalPrinter } from '../lib/thermalPrinter';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageToggle } from './LanguageToggle';
 import { ThermalReceipt } from './ThermalReceipt';
-import { ShopkeeperPhoneModal } from './ShopkeeperPhoneModal';
+import { BluetoothPrinterModal } from './BluetoothPrinterModal';
 import { RequestDeleteModal } from './RequestDeleteModal';
 import { LogoutPinModal } from './LogoutPinModal';
 import { playChimeSound, playPrintClickSound } from '../lib/soundNotification';
@@ -34,11 +31,15 @@ import {
   Trash2,
   Search,
   RefreshCw,
-  Send,
   Smartphone,
   ShieldCheck,
   CheckCircle2,
   Store,
+  Printer,
+  Pencil,
+  Receipt,
+  Download,
+  Check,
 } from 'lucide-react';
 
 interface Props {
@@ -67,12 +68,11 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const [isCreatingBill, setIsCreatingBill] = useState(false);
   const [createdBill, setCreatedBill] = useState<Bill | null>(null);
 
-  // WhatsApp Sender State (Saved strictly on employee phone itself)
-  const [activeShopkeeperPhone, setActiveShopkeeperPhoneState] = useState<string>('');
-  const [activeShopkeeperName, setActiveShopkeeperNameState] = useState<string>('');
-  const [savedContacts, setSavedContacts] = useState<ShopkeeperContact[]>([]);
-  const [showShopkeeperModal, setShowShopkeeperModal] = useState<boolean>(false);
-  const [modalStartAddNew, setModalStartAddNew] = useState<boolean>(false);
+  // Editable Amount state
+  const [customAmountStr, setCustomAmountStr] = useState<string>('');
+  const [isEditingAmount, setIsEditingAmount] = useState<boolean>(false);
+
+  const [showPrinterModal, setShowPrinterModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modals
@@ -131,65 +131,6 @@ export const EmployeeDashboard: React.FC<Props> = ({
     };
   }, [todayDate]);
 
-  // Load shopkeeper contacts and active phone saved strictly on this employee device
-  const refreshContacts = () => {
-    const list = getSavedShopkeeperContacts();
-    setSavedContacts(list);
-    const active = getActiveShopkeeperPhone();
-    if (active) {
-      setActiveShopkeeperPhoneState(active);
-      const matched = list.find((c) => c.phone === active);
-      if (matched) {
-        setActiveShopkeeperNameState(matched.name);
-      }
-    } else if (list.length > 0) {
-      setActiveShopkeeperPhone(list[0].phone);
-      setActiveShopkeeperPhoneState(list[0].phone);
-      setActiveShopkeeperNameState(list[0].name);
-    }
-  };
-
-  useEffect(() => {
-    refreshContacts();
-  }, []);
-
-  // Employee selects a shop here itself if in need, or clicks again to deselect
-  const handleSelectShopInline = (c: ShopkeeperContact) => {
-    playPrintClickSound();
-    if (activeShopkeeperPhone === c.phone) {
-      // Toggle off / deselect
-      setActiveShopkeeperPhone('');
-      setActiveShopkeeperPhoneState('');
-      setActiveShopkeeperNameState('');
-      setToastMessage(
-        isTamil
-          ? `${c.name} தேர்வு நீக்கப்பட்டது`
-          : `${c.name} deselected`
-      );
-    } else {
-      setActiveShopkeeperPhone(c.phone);
-      setActiveShopkeeperPhoneState(c.phone);
-      setActiveShopkeeperNameState(c.name);
-      setToastMessage(
-        isTamil
-          ? `தேர்வு செய்யப்பட்டது: ${c.name}`
-          : `Selected: ${c.name}`
-      );
-    }
-    setTimeout(() => setToastMessage(null), 2500);
-  };
-
-  const handleClearSelectedShop = () => {
-    playPrintClickSound();
-    setActiveShopkeeperPhone('');
-    setActiveShopkeeperPhoneState('');
-    setActiveShopkeeperNameState('');
-    setToastMessage(
-      isTamil ? 'கடை தேர்வு நீக்கப்பட்டது' : 'Shop selection cleared'
-    );
-    setTimeout(() => setToastMessage(null), 2500);
-  };
-
   const triggerAutoSync = async () => {
     setIsSyncing(true);
     try {
@@ -214,6 +155,11 @@ export const EmployeeDashboard: React.FC<Props> = ({
   // Calculated Total Amount (in 1 Tara)
   const rawTotal = trayCount * pricePer30Eggs;
   const calculatedTotal = Math.round(rawTotal);
+
+  // Final Total Amount (honors custom edited amount if set by employee)
+  const finalTotalAmount = customAmountStr !== '' && !isNaN(Number(customAmountStr))
+    ? Math.max(0, Math.round(Number(customAmountStr)))
+    : calculatedTotal;
 
   const remainingStock = todayStock?.remainingStock ?? 0;
   const isStockInsufficient = totalEggs > 0 && totalEggs > remainingStock;
@@ -242,6 +188,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
   const handleKeypadClear = () => {
     setTrayQuantityStr('');
+    setCustomAmountStr('');
+    setIsEditingAmount(false);
     setBillingError(null);
   };
 
@@ -258,8 +206,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
     setBillingError(null);
   };
 
-  // Create and send bill directly if shop already chosen, or prompt for shop
-  const handleCreateBill = async (shouldAutoPrint?: boolean) => {
+  // Create and show bill receipt directly if shop already chosen, or prompt for shop
+  const handleCreateBill = async () => {
     if (pricePer30Eggs <= 0 && pricePerEgg <= 0) {
       setBillingError(
         isTamil
@@ -290,116 +238,66 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
     setBillingError(null);
     playPrintClickSound();
-
-    // If the employee is already selected, directly send the bill to the respective number.
-    // If the employee is not already selected, ask for the hotel name again while sending the bill.
-    if (activeShopkeeperPhone.trim()) {
-      await handleShopSelectedAndSendBill(activeShopkeeperPhone, activeShopkeeperName, true);
-    } else {
-      setModalStartAddNew(false);
-      setShowShopkeeperModal(true);
-    }
-  };
-
-  // Execute bill creation and WhatsApp dispatch
-  const handleShopSelectedAndSendBill = async (
-    phone: string,
-    name?: string,
-    isPreselected = false
-  ) => {
-    setShowShopkeeperModal(false);
-
-    // If no quantity entered (e.g. employee opened modal just to browse shops), don't create empty bill
-    if (trayCount <= 0) {
-      if (isPreselected) {
-        setActiveShopkeeperPhone(phone);
-        setActiveShopkeeperPhoneState(phone);
-        if (name) setActiveShopkeeperNameState(name);
-      }
-      setToastMessage(
-        isTamil
-          ? `கடை: ${name || phone}`
-          : `Shop: ${name || phone}`
-      );
-      setTimeout(() => setToastMessage(null), 3000);
-      return;
-    }
-
     setIsCreatingBill(true);
+
     try {
-      // 1. Create and save bill in Firestore database & offline operational storage
+      // 1. Create and save bill in Firestore database & offline storage
       const savedBill = await EggAgencyService.createBill({
         eggQuantity: totalEggs,
         employeeName: 'Staff Employee',
+        customTotalAmount: finalTotalAmount,
+        paymentStatus: 'paid',
+        paidAmount: finalTotalAmount,
+        pendingAmount: 0,
       });
 
-      // 2. Clear entered quantity
+      // 2. Clear entered quantity and custom states
       setTrayQuantityStr('');
-
-      // If the employee was NOT already selected on the dashboard,
-      // keep activeShopkeeperPhone empty so the next bill will ask for the hotel name again!
-      if (!isPreselected) {
-        setActiveShopkeeperPhone('');
-        setActiveShopkeeperPhoneState('');
-        setActiveShopkeeperNameState('');
-      }
-
-      // 3. Share the PDF bill via WhatsApp directly to this clicked shop
-      const shareRes = await shareBillToWhatsApp(
-        savedBill,
-        settings,
-        phone,
-        name || 'Shopkeeper'
-      );
+      setCustomAmountStr('');
+      setIsEditingAmount(false);
 
       playChimeSound();
-      if (shareRes.success) {
-        setToastMessage(
-          isTamil
-            ? `வாட்ஸ்அப்பில் "${name || 'கடை'}" பில் #${savedBill.billNumber} அனுப்பப்பட்டது!`
-            : `Bill #${savedBill.billNumber} sent to "${name || 'Shop'}" via WhatsApp!`
-        );
-      } else {
-        setToastMessage(
-          isTamil
-            ? `பில் #${savedBill.billNumber} உருவானது! PDF பதிவிறக்கப்பட்டது.`
-            : `Bill #${savedBill.billNumber} created! PDF downloaded.`
-        );
+
+      // 3. Open enhanced Thermal Receipt preview immediately
+      setActiveReceiptBill(savedBill);
+
+      // 4. Auto print if printer connected & auto-print option is enabled
+      if (printer.connected && printer.autoPrintOnBill) {
+        thermalPrinter.printBill(savedBill, settings, printer.paperWidth).catch(() => {});
       }
-      setTimeout(() => setToastMessage(null), 4000);
+
+      setToastMessage(
+        isTamil
+          ? `பில் #${savedBill.billNumber} வெற்றிகரமாக உருவானது!`
+          : `Bill #${savedBill.billNumber} created successfully!`
+      );
+      setTimeout(() => setToastMessage(null), 3500);
     } catch (err: any) {
-      setBillingError(err.message || 'Failed to create and send bill');
+      setBillingError(err.message || 'Failed to create bill');
     } finally {
       setIsCreatingBill(false);
     }
   };
 
-  // Direct WhatsApp PDF share for history bills
-  const handleDirectWhatsAppShare = async (b: Bill) => {
-    if (!activeShopkeeperPhone.trim()) {
-      setShowShopkeeperModal(true);
-      return;
-    }
-
+  // Direct PDF download for history bills
+  const handleDirectPdfDownload = async (b: Bill) => {
     try {
       playPrintClickSound();
-      const res = await shareBillToWhatsApp(
+      await downloadBillPdf(
         b,
         settings,
-        activeShopkeeperPhone,
-        activeShopkeeperName || 'Shopkeeper'
+        b.customerName || 'Valued Customer',
+        b.customerPhone || ''
       );
-      if (res.success) {
-        playChimeSound();
-        setToastMessage(
-          isTamil
-            ? `வாட்ஸ்அப்பில் பில் #${b.billNumber} அனுப்பப்பட்டது! (+91 ${activeShopkeeperPhone})`
-            : `Bill #${b.billNumber} sent to WhatsApp! (+91 ${activeShopkeeperPhone})`
-        );
-        setTimeout(() => setToastMessage(null), 3500);
-      }
+      playChimeSound();
+      setToastMessage(
+        isTamil
+          ? `பில் #${b.billNumber} PDF பதிவிறக்கப்பட்டது!`
+          : `Bill #${b.billNumber} PDF downloaded!`
+      );
+      setTimeout(() => setToastMessage(null), 3000);
     } catch (e: any) {
-      setBillingError(e.message || 'Failed to share WhatsApp bill');
+      setBillingError(e.message || 'Failed to download PDF');
     }
   };
 
@@ -457,18 +355,29 @@ export const EmployeeDashboard: React.FC<Props> = ({
             {/* Language Switcher */}
             <LanguageToggle variant="header" />
 
-            {/* WhatsApp Sender Button (Replaces billing machine) */}
+            {/* Bluetooth Thermal Printer Button */}
             <button
               type="button"
-              onClick={() => setShowShopkeeperModal(true)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-emerald-950 transition-all shadow-xs"
-              title={t('whatsappSender')}
+              onClick={() => {
+                playPrintClickSound();
+                setShowPrinterModal(true);
+              }}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                printer.connected
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black'
+                  : 'bg-white/15 hover:bg-white/25 text-white'
+              }`}
+              title={printer.connected ? 'Thermal Printer Connected' : 'Connect Bluetooth Printer'}
             >
-              <Send className="w-3.5 h-3.5 shrink-0" />
-              <span className="font-mono text-xs font-black tracking-tight">
-                {activeShopkeeperPhone
-                  ? `+91 ${activeShopkeeperPhone.slice(-5)}`
-                  : (isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp')}
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span className="text-xs font-bold hidden sm:inline">
+                {printer.connected
+                  ? isTamil
+                    ? 'பிரிண்டர் தயார்'
+                    : 'Printer On'
+                  : isTamil
+                  ? 'பிரிண்டர்'
+                  : 'Printer'}
               </span>
             </button>
 
@@ -476,7 +385,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowLogoutModal(true)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors"
+              className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors cursor-pointer"
               title={t('logout')}
             >
               <LogOut className="w-4 h-4" />
@@ -570,192 +479,9 @@ export const EmployeeDashboard: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Shopkeeper WhatsApp Chooser & Target Card (Choose shop here itself) */}
-          {/* Shopkeeper WhatsApp Chooser & Target Card (No auto-selection; select only if in need) */}
-          <div
-            className={`rounded-2xl p-3 shadow-xs space-y-2.5 transition-all ${
-              activeShopkeeperPhone
-                ? 'bg-white border-2 border-emerald-500/90 ring-1 ring-emerald-400/30'
-                : 'bg-white border-2 border-slate-200'
-            }`}
-          >
-            {/* Header: Title and Add Shop Key */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <div
-                  className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-2xs ${
-                    activeShopkeeperPhone
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-700 text-white'
-                  }`}
-                >
-                  <Store className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-tight truncate block">
-                    {activeShopkeeperPhone
-                      ? (isTamil ? 'தேர்ந்தெடுக்கப்பட்ட கடை' : 'Selected Hotel / Shop')
-                      : (isTamil ? 'ஹோட்டல் / கடை தேர்வு (விருப்பத்தேர்வு)' : 'Hotel / Shop Selection (Optional)')}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  playPrintClickSound();
-                  setModalStartAddNew(true);
-                  setShowShopkeeperModal(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-black shrink-0 transition-all shadow-2xs cursor-pointer"
-                title={isTamil ? 'புதிய கடை பெயர் சேர்க்க' : 'Add New Shop'}
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>{isTamil ? '+ கடை சேர்க்க' : '+ Add Shop'}</span>
-              </button>
-            </div>
-
-            {/* Chosen Shop Display OR Unselected Neutral Guidance Banner */}
-            {activeShopkeeperPhone ? (
-              <div className="bg-emerald-50/90 border-2 border-emerald-400 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
-                <div className="min-w-0 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-sm font-black text-emerald-950 truncate block">
-                      {activeShopkeeperName || 'Shop'}
-                    </span>
-                    <span className="text-xs font-mono font-bold text-emerald-700 block truncate">
-                      +91 {activeShopkeeperPhone}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleClearSelectedShop}
-                    className="text-xs font-black bg-white hover:bg-rose-50 text-rose-700 hover:text-rose-800 border border-rose-300 px-2 py-1 rounded-lg shrink-0 transition-colors shadow-2xs cursor-pointer active:scale-95"
-                    title={isTamil ? 'தேர்வை நீக்கு' : 'Deselect shop'}
-                  >
-                    {isTamil ? '✕ நீக்கு' : '✕ Deselect'}
-                  </button>
-                  {savedContacts.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playPrintClickSound();
-                        setModalStartAddNew(false);
-                        setShowShopkeeperModal(true);
-                      }}
-                      className="text-xs font-black bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-1 rounded-lg shrink-0 transition-colors shadow-2xs cursor-pointer"
-                      title={isTamil ? 'அனைத்து கடைகளையும் பார்க்க' : 'View all shops'}
-                    >
-                      {isTamil ? 'பட்டியல்' : 'View All'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
-                <div className="min-w-0 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                    <Store className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs font-black text-slate-800 truncate block">
-                      {isTamil ? 'ஹோட்டல் எதுவும் தேர்ந்தெடுக்கப்படவில்லை' : 'No hotel selected'}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500 truncate block">
-                      {isTamil
-                        ? 'தேவைப்பட்டால் கீழே தேர்வு செய்க • இல்லையெனில் பில் அனுப்பும்போது கேட்கப்படும்'
-                        : 'Select below if needed • Otherwise asks while sending bill'}
-                    </span>
-                  </div>
-                </div>
-
-                {savedContacts.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playPrintClickSound();
-                      setModalStartAddNew(false);
-                      setShowShopkeeperModal(true);
-                    }}
-                    className="text-xs font-black bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-2.5 py-1 rounded-lg shrink-0 transition-colors shadow-2xs cursor-pointer"
-                    title={isTamil ? 'அனைத்து கடைகளையும் பார்க்க' : 'View all shops'}
-                  >
-                    {isTamil ? 'பட்டியல்' : 'View All'}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Quick Shop Chooser: Horizontal Chips (None auto-selected, click to select if in need) */}
-            {savedContacts.length > 0 ? (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                {savedContacts.map((c) => {
-                  const isSelected = activeShopkeeperPhone === c.phone;
-                  return (
-                    <button
-                      key={c.phone}
-                      type="button"
-                      onClick={() => handleSelectShopInline(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shrink-0 transition-all active:scale-95 shadow-2xs cursor-pointer ${
-                        isSelected
-                          ? 'bg-emerald-600 text-white ring-2 ring-emerald-400 ring-offset-1 shadow-emerald-600/30'
-                          : 'bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-950 border border-slate-200 hover:border-emerald-300'
-                      }`}
-                      title={isSelected ? (isTamil ? 'தேர்வு நீக்க கிளிக் செய்க' : 'Click to deselect') : (isTamil ? 'தேர்வு செய்ய கிளிக் செய்க' : 'Click to select')}
-                    >
-                      {isSelected ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
-                      ) : (
-                        <Store className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      )}
-                      <span className="truncate max-w-[130px]">{c.name}</span>
-                    </button>
-                  );
-                })}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    playPrintClickSound();
-                    setModalStartAddNew(true);
-                    setShowShopkeeperModal(true);
-                  }}
-                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-50 hover:bg-emerald-50 text-emerald-800 border border-dashed border-emerald-400 flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-                >
-                  <PlusCircle className="w-3 h-3 text-emerald-600" />
-                  <span>{isTamil ? 'புதிய கடை' : 'New Shop'}</span>
-                </button>
-              </div>
-            ) : (
-              <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-2.5 text-center">
-                <p className="text-xs font-bold text-slate-600">
-                  {isTamil ? 'கடைகள் எதுவும் சேர்க்கப்படவில்லை' : 'No shops entered yet'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    playPrintClickSound();
-                    setModalStartAddNew(true);
-                    setShowShopkeeperModal(true);
-                  }}
-                  className="mt-1.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black inline-flex items-center gap-1 shadow-2xs"
-                >
-                  <PlusCircle className="w-3 h-3" />
-                  <span>{isTamil ? '+ கடை பெயர் சேர்க்கவும்' : '+ Add Shop Name & Number'}</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Quantity & Calculation Card */}
-          <div className="bg-white rounded-2xl p-3.5 border-2 border-slate-200 shadow-xs space-y-2.5">
-            {/* Large Display Box with Quantity in Trays on Left, Total Amount on Right */}
+          {/* Quantity & Calculation Card with Directly Editable Total Amount */}
+          <div className="bg-white rounded-2xl p-3.5 border-2 border-slate-200 shadow-xs space-y-3">
+            {/* Display Box with Quantity in Trays on Left, Directly Editable Total Amount on Right */}
             <div className="bg-slate-50 border-2 border-blue-300 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-inner">
               {/* Left: Entered Quantity in Trays */}
               <div className="min-w-0">
@@ -771,15 +497,45 @@ export const EmployeeDashboard: React.FC<Props> = ({
               </div>
 
               {/* Divider */}
-              <div className="h-9 w-px bg-slate-200 shrink-0" />
+              <div className="h-10 w-px bg-slate-300 shrink-0" />
 
-              {/* Right: Calculated Total Amount based on Trays */}
+              {/* Right: Directly Editable Total Amount */}
               <div className="text-right shrink-0">
-                <div className="text-[11px] font-bold text-slate-500">
-                  {t('totalAmount')}
+                <div className="text-[11px] font-bold text-slate-500 flex items-center justify-end gap-1.5">
+                  <span>{t('totalAmount')}</span>
+                  {customAmountStr !== '' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAmountStr('');
+                        setIsEditingAmount(false);
+                      }}
+                      className="text-[10px] text-blue-600 font-black hover:underline cursor-pointer bg-blue-50 px-1.5 py-0.5 rounded"
+                      title={isTamil ? 'தானியங்கி கணக்கீட்டிற்கு மீட்டமை' : 'Reset to auto rate'}
+                    >
+                      {isTamil ? 'தானியங்கி' : 'Auto'}
+                    </button>
+                  )}
                 </div>
-                <div className="text-2xl font-black text-blue-700 font-mono mt-0.5">
-                  ₹{calculatedTotal.toLocaleString('en-IN')}
+
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                  <span className="text-xl sm:text-2xl font-black text-blue-700 font-mono">₹</span>
+                  <input
+                    type="number"
+                    value={customAmountStr !== '' ? customAmountStr : (calculatedTotal > 0 ? calculatedTotal : '')}
+                    onChange={(e) => {
+                      setCustomAmountStr(e.target.value);
+                      setIsEditingAmount(true);
+                    }}
+                    placeholder={String(calculatedTotal || '0')}
+                    className="w-28 sm:w-32 px-2 py-0.5 border-2 border-blue-400 focus:border-blue-700 rounded-xl text-xl sm:text-2xl font-black font-mono text-blue-900 bg-white shadow-inner text-right focus:outline-hidden"
+                    title={isTamil ? 'தொகையை நேரடியாக மாற்றலாம்' : 'Directly editable total amount'}
+                  />
+                </div>
+                <div className="text-[10px] font-bold text-blue-600 mt-0.5">
+                  {customAmountStr !== ''
+                    ? (isTamil ? '✏️ மாற்றப்பட்ட தொகை' : '✏️ Custom Amount')
+                    : (isTamil ? '✏️ தொகையை மாற்றலாம்' : '✏️ Editable Amount')}
                 </div>
               </div>
             </div>
@@ -867,38 +623,28 @@ export const EmployeeDashboard: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Main Action Button - Select Shop & Send Bill (WhatsApp PDF) */}
+          {/* Main Action Button - Generate Bill & Print Receipt */}
           <div className="pt-1 pb-4">
             <button
               type="button"
               onClick={() => handleCreateBill()}
               disabled={isCreatingBill || trayCount <= 0 || isStockInsufficient}
-              className={`w-full py-4 px-4 rounded-2xl font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg transition-all active:scale-98 ${
+              className={`w-full py-4 px-4 rounded-2xl font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg transition-all active:scale-98 cursor-pointer ${
                 trayCount > 0 && !isStockInsufficient
-                  ? 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-emerald-500/30 ring-2 ring-emerald-400/40'
+                  ? 'bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white shadow-blue-500/30 ring-2 ring-blue-400/40'
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               }`}
             >
-              <Store className="w-5 h-5 shrink-0" />
+              <Receipt className="w-5 h-5 shrink-0" />
               <div className="text-center leading-tight">
                 <div>
                   {isCreatingBill
                     ? (isTamil ? 'பில் உருவாகிறது...' : 'Generating Bill...')
-                    : activeShopkeeperName
-                    ? (isTamil
-                        ? `"${activeShopkeeperName}" கடைக்கு பில் அனுப்பு`
-                        : `Send Bill to "${activeShopkeeperName}"`)
-                    : (isTamil ? 'பில் அனுப்பு (வாட்ஸ்அப் PDF)' : 'Send Bill (WhatsApp PDF)')}
+                    : (isTamil ? 'பில் போடு & அச்சிடு' : 'Generate Bill & Print')}
                 </div>
                 {trayCount > 0 && !isStockInsufficient && !isCreatingBill && (
-                  <div className="text-[10px] font-bold opacity-90 normal-case tracking-normal">
-                    {activeShopkeeperPhone
-                      ? (isTamil
-                          ? `வாட்ஸ்அப்: +91 ${activeShopkeeperPhone} • நேரடியாக பில் செல்லும்`
-                          : `WhatsApp: +91 ${activeShopkeeperPhone} • Direct send to selected number`)
-                      : (isTamil
-                          ? 'ஹோட்டல் பெயர் கேட்கப்பட்டு பில் அனுப்பப்படும்'
-                          : 'Will ask for hotel name & send bill')}
+                  <div className="text-xs font-mono font-bold opacity-90 normal-case tracking-normal">
+                    {trayCount} {isTamil ? 'தாரா' : 'Trays'} ({totalEggs} {t('eggs')}) = ₹{finalTotalAmount.toLocaleString('en-IN')}
                   </div>
                 )}
               </div>
@@ -944,33 +690,29 @@ export const EmployeeDashboard: React.FC<Props> = ({
                       <span className="font-mono font-black text-sm text-blue-900">
                         {t('billNo')} #{b.billNumber}
                       </span>
+
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
                           b.syncStatus === 'synced'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'bg-slate-100 text-slate-700'
                         }`}
                       >
-                        {b.syncStatus === 'synced' ? (isTamil ? 'ஒத்திசைக்கப்பட்டது' : 'Synced') : (isTamil ? 'ஆஃப்லைன்' : 'Offline')}
+                        {b.syncStatus === 'synced' ? (isTamil ? 'ஒத்திசைவு' : 'Synced') : (isTamil ? 'ஆஃப்லைன்' : 'Offline')}
                       </span>
 
                       {/* Delete Request Status Badge */}
                       {b.deleteRequest?.status === 'pending' && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
-                          {isTamil ? 'நீக்குதல் கோரப்பட்டது (ஒப்புதலுக்கு காத்திருக்கிறது)' : 'Delete Requested (Pending Owner Approval)'}
-                        </span>
-                      )}
-                      {b.deleteRequest?.status === 'rejected' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-slate-100 text-slate-600 border border-slate-300">
-                          {isTamil ? 'நீக்குதல் நிராகரிக்கப்பட்டது' : 'Delete Rejected'}
+                          {isTamil ? 'நீக்குதல் கோரப்பட்டது' : 'Delete Requested'}
                         </span>
                       )}
                     </div>
 
                     <div className="text-xs font-bold text-slate-700 truncate">
-                      <span>{b.eggQuantity} {t('eggs')}</span>
+                      <span>{Math.floor(b.eggQuantity / 30)} {isTamil ? 'தாரா' : 'Trays'} ({b.eggQuantity} {t('eggs')})</span>
                       <span className="text-slate-400"> • </span>
-                      <span>₹{b.pricePerEgg}{t('perEgg')}</span>
+                      <span>₹{b.pricePer30Eggs || Math.round(b.pricePerEgg * 30)}/தாரா</span>
                     </div>
 
                     <div className="text-[11px] font-bold text-slate-500 truncate">
@@ -978,34 +720,36 @@ export const EmployeeDashboard: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Right Amount & Actions (Reprint & Delete Request) */}
+                  {/* Right Amount & Actions (Receipt View, PDF, Delete) */}
                   <div className="text-right shrink-0 space-y-1.5">
-                    <div className="font-black text-base text-slate-900 font-mono">
+                    <div className="font-black text-base sm:text-lg text-slate-950 font-mono">
                       ₹{Math.round(b.totalAmount).toLocaleString('en-IN')}
                     </div>
-                    <div className="flex items-center justify-end gap-1.5">
-                      {/* Send to WhatsApp (PDF) */}
-                      <button
-                        type="button"
-                        onClick={() => handleDirectWhatsAppShare(b)}
-                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1 border border-emerald-300 active:scale-95 transition-all shadow-2xs"
-                        title={isTamil ? 'வாட்ஸ்அப் PDF அனுப்பு' : 'Send WhatsApp PDF'}
-                      >
-                        <Send className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{isTamil ? 'வாட்ஸ்அப்' : 'WhatsApp'}</span>
-                      </button>
 
-                      {/* View Receipt */}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* View / Print Receipt */}
                       <button
                         type="button"
                         onClick={() => {
                           setIsReceiptDraft(false);
                           setActiveReceiptBill(b);
                         }}
-                        className="bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-black px-2 py-1 rounded-xl flex items-center gap-1 border border-slate-200 active:scale-95 transition-all"
-                        title={isTamil ? 'ரசீது முன்னோட்டம்' : 'Receipt Preview'}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-900 text-xs font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                        title={isTamil ? 'பில் ரசீது அச்சிடு / பார்' : 'View / Print Receipt'}
                       >
-                        <span>{isTamil ? 'பார்' : 'View'}</span>
+                        <Receipt className="w-3.5 h-3.5 text-blue-700" />
+                        <span>{isTamil ? 'ரசீது' : 'Receipt'}</span>
+                      </button>
+
+                      {/* Download PDF */}
+                      <button
+                        type="button"
+                        onClick={() => handleDirectPdfDownload(b)}
+                        className="bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-black px-2 py-1.5 rounded-xl flex items-center gap-1 border border-slate-200 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                        title={isTamil ? 'PDF பதிவிறக்க' : 'Download PDF'}
+                      >
+                        <Download className="w-3.5 h-3.5 text-slate-600" />
+                        <span>PDF</span>
                       </button>
 
                       {/* Request Delete Button */}
@@ -1040,7 +784,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Bill Receipt Preview & WhatsApp Modal */}
+      {/* Bill Receipt Preview & Thermal Print Modal */}
       {activeReceiptBill && (
         <ThermalReceipt
           bill={activeReceiptBill}
@@ -1056,22 +800,15 @@ export const EmployeeDashboard: React.FC<Props> = ({
         />
       )}
 
-      {/* Shopkeeper WhatsApp Phone Modal (Saved strictly on employee phone itself) */}
-      {showShopkeeperModal && (
-        <ShopkeeperPhoneModal
-          isOpen={showShopkeeperModal}
-          billAmount={calculatedTotal > 0 ? calculatedTotal : undefined}
-          trayCount={trayCount > 0 ? trayCount : undefined}
-          initialAddNew={modalStartAddNew}
-          onClose={() => {
-            setShowShopkeeperModal(false);
-            setModalStartAddNew(false);
-            refreshContacts();
-          }}
-          onPhoneSelected={(phone, name) => {
-            handleShopSelectedAndSendBill(phone, name, false);
-            refreshContacts();
-          }}
+
+
+      {/* Bluetooth Thermal Printer Setup Modal */}
+      {showPrinterModal && (
+        <BluetoothPrinterModal
+          printer={printer}
+          settings={settings}
+          onUpdatePrinter={onUpdatePrinter}
+          onClose={() => setShowPrinterModal(false)}
         />
       )}
 

@@ -8,6 +8,19 @@ export interface DailyPrice {
   updatedAt: string;
 }
 
+export interface StockImportEntry {
+  id: string;
+  trays: number;
+  eggs: number;
+  timestamp: string;
+  timeStr: string;
+  mode: 'add' | 'set';
+  previousRemainingTrays: number;
+  newRemainingTrays: number;
+  purchasePricePer30?: number;
+  note?: string;
+}
+
 export interface DailyStock {
   date: string; // YYYY-MM-DD
   openingStock: number;
@@ -16,6 +29,7 @@ export interface DailyStock {
   remainingStock: number;
   purchaseCost: number;
   updatedAt: string;
+  importHistory?: StockImportEntry[];
 }
 
 export interface BillDeleteRequest {
@@ -30,6 +44,11 @@ export interface Bill {
   billNumber: number;
   employeeId: string;
   employeeName: string;
+  customerName?: string;
+  customerPhone?: string;
+  paymentStatus?: 'paid';
+  paidAmount?: number;
+  pendingAmount?: number;
   date: string; // YYYY-MM-DD
   time: string; // 12:30 PM
   createdAt: string; // ISO

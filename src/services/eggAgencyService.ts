@@ -13,7 +13,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Bill, DailyPrice, DailyStock, BillNotification, AgencySettings } from '../types';
+import { Bill, DailyPrice, DailyStock, StockImportEntry, BillNotification, AgencySettings } from '../types';
 import {
   getTodayDateString,
   formatTime,
@@ -180,13 +180,101 @@ export const EggAgencyService = {
   },
 
   /**
+   * Adds stock cumulatively to today's inventory.
+   * If mode === 'add': adds incoming trays to existing stock (e.g. 10 + 4 = 14 trays).
+   * If mode === 'set': overrides total stock count.
+   * Records an audit entry in importHistory so the owner can review all deliveries.
+   */
+  async addStockToToday(params: {
+    date?: string;
+    trays: number;
+    purchaseCostPer30?: number;
+    mode?: 'add' | 'set';
+    note?: string;
+  }): Promise<DailyStock> {
+    const date = params.date || getTodayDateString();
+    const currentStock = await this.getTodayStock(date);
+    const mode = params.mode || 'add';
+    const trays = Math.max(0, params.trays);
+    const eggsFromInput = Math.round(trays * 30);
+
+    const prevRemaining = currentStock.remainingStock;
+    const prevEggsSold = currentStock.eggsSold;
+    const prevImportHistory = currentStock.importHistory || [];
+
+    let newOpeningStock = 0;
+    let newImportedStock = 0;
+    let newRemainingStock = 0;
+
+    if (mode === 'add') {
+      newOpeningStock = currentStock.openingStock + eggsFromInput;
+      newImportedStock = currentStock.importedStock + eggsFromInput;
+      newRemainingStock = prevRemaining + eggsFromInput;
+    } else {
+      // Set mode: sets the total stock count
+      newOpeningStock = eggsFromInput + prevEggsSold;
+      newImportedStock = eggsFromInput;
+      newRemainingStock = Math.max(0, eggsFromInput - prevEggsSold);
+    }
+
+    const calculatedCostPerEgg =
+      params.purchaseCostPer30 && params.purchaseCostPer30 > 0
+        ? parseFloat((params.purchaseCostPer30 / 30).toFixed(2))
+        : currentStock.purchaseCost;
+
+    const newEntry: StockImportEntry = {
+      id: `imp_${date}_${Date.now()}`,
+      trays,
+      eggs: eggsFromInput,
+      timestamp: new Date().toISOString(),
+      timeStr: formatTime(new Date()),
+      mode,
+      previousRemainingTrays: Math.floor(prevRemaining / 30),
+      newRemainingTrays: Math.floor(newRemainingStock / 30),
+      purchasePricePer30: params.purchaseCostPer30,
+      note: params.note,
+    };
+
+    const updatedStock: DailyStock = {
+      date,
+      openingStock: newOpeningStock,
+      importedStock: newImportedStock,
+      eggsSold: prevEggsSold,
+      remainingStock: newRemainingStock,
+      purchaseCost: calculatedCostPerEgg,
+      updatedAt: new Date().toISOString(),
+      importHistory: [...prevImportHistory, newEntry],
+    };
+
+    await this.saveTodayStock(updatedStock);
+
+    if (calculatedCostPerEgg > 0) {
+      const todayPriceDoc = await this.getTodayPrice(date);
+      if (todayPriceDoc) {
+        await this.saveTodayPrice({
+          ...todayPriceDoc,
+          purchaseCost: calculatedCostPerEgg,
+        });
+      }
+    }
+
+    return updatedStock;
+  },
+
+  /**
    * Create Bill with stock protection, offline-first execution, and real-time syncing
    */
   async createBill(params: {
     eggQuantity: number;
     employeeId?: string;
     employeeName?: string;
+    customerName?: string;
+    customerPhone?: string;
+    paymentStatus?: 'paid';
+    paidAmount?: number;
+    pendingAmount?: number;
     date?: string;
+    customTotalAmount?: number;
   }): Promise<Bill> {
     const date = params.date || getTodayDateString();
     const eggQuantity = Number(params.eggQuantity);
@@ -210,10 +298,11 @@ export const EggAgencyService = {
     const purchaseCostPerEgg = activePrice.purchaseCost;
 
     // Pricing calculation:
-    // If owner set 30-egg tray price, trays use tray price + remaining loose eggs
-    // If 30-egg price matches 30 * pricePerEgg, it evaluates cleanly to eggQuantity * pricePerEgg
+    // If employee provided customTotalAmount (amount edited on screen), honor it directly!
     let totalAmount = 0;
-    if (eggQuantity >= 30 && pricePer30Eggs > 0) {
+    if (params.customTotalAmount !== undefined && !isNaN(params.customTotalAmount) && params.customTotalAmount >= 0) {
+      totalAmount = Math.round(params.customTotalAmount);
+    } else if (eggQuantity >= 30 && pricePer30Eggs > 0) {
       const trays = Math.floor(eggQuantity / 30);
       const loose = eggQuantity % 30;
       totalAmount = trays * pricePer30Eggs + loose * pricePerEgg;
@@ -236,6 +325,11 @@ export const EggAgencyService = {
       billNumber,
       employeeId: params.employeeId || 'emp_01',
       employeeName: params.employeeName || 'Staff Ramesh',
+      customerName: params.customerName || undefined,
+      customerPhone: params.customerPhone || undefined,
+      paymentStatus: 'paid',
+      paidAmount: totalAmount,
+      pendingAmount: 0,
       date,
       time: currentTimeStr,
       createdAt: new Date().toISOString(),
@@ -348,6 +442,7 @@ export const EggAgencyService = {
 
     return { syncedCount, errors };
   },
+
 
   /**
    * Request bill deletion by employee (sent to Owner for approval)

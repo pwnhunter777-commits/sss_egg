@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { DailyStock } from '../types';
 import { EggAgencyService } from '../services/eggAgencyService';
 import { getTodayDateString } from '../lib/offlineStorage';
-import { Check, X, AlertCircle, TrendingUp } from 'lucide-react';
+import { playChimeSound, playPrintClickSound } from '../lib/soundNotification';
+import { Check, X, AlertCircle, Plus, RotateCcw } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
@@ -19,88 +20,69 @@ export const StockImportModal: React.FC<Props> = ({
   const { t, isTamil } = useLanguage();
   const todayStr = getTodayDateString();
 
-  // Stock is measured and entered in 1 Tara (1 Tara = 30 Eggs)
-  const currentTotalEggs = currentStock?.remainingStock ?? 0;
-  const initialTaras =
-    currentTotalEggs > 0 ? String(Math.floor(currentTotalEggs / 30)) : '0';
-  const [taraCountStr, setTaraCountStr] = useState<string>(initialTaras);
+  // Current stock metrics in 1 Tara = 30 eggs
+  const currentRemainingEggs = currentStock?.remainingStock ?? 0;
+  const currentRemainingTrays = Math.floor(currentRemainingEggs / 30);
+  const currentLooseEggs = currentRemainingEggs % 30;
 
-  // Stock Purchase Price for 30 Eggs / 1 Tara (used for profit calculation)
-  const initial30Price =
-    currentStock?.purchaseCost && currentStock.purchaseCost > 0
-      ? String(Math.round(currentStock.purchaseCost * 30))
-      : '0';
-  const [pricePer30Str, setPricePer30Str] = useState<string>(initial30Price);
+  // Mode: 'add' (adds to existing stock - DEFAULT) vs 'set' (sets total)
+  const [mode, setMode] = useState<'add' | 'set'>('add');
+
+  // Input value in trays
+  const [taraCountStr, setTaraCountStr] = useState<string>('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const taraCount = parseFloat(taraCountStr) || 0;
-  const num30Price = parseFloat(pricePer30Str) || 0;
-  const currentEggsSold = currentStock?.eggsSold ?? 0;
+  const enteredTrays = parseFloat(taraCountStr) || 0;
+
+  // Calculation for live display
+  const calculatedNewTotalTrays =
+    mode === 'add'
+      ? currentRemainingTrays + enteredTrays
+      : enteredTrays;
+
+  const calculatedNewTotalEggs =
+    mode === 'add'
+      ? currentRemainingEggs + Math.round(enteredTrays * 30)
+      : Math.round(enteredTrays * 30);
 
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (taraCount <= 0) {
+    if (enteredTrays <= 0) {
       setErrorMsg(
         isTamil
-          ? '1 தாரா (30 முட்டை) எண்ணிக்கையை உள்ளிடவும் (0 விட அதிகமாக)'
-          : 'Please enter 1 Tara quantity (greater than 0)'
-      );
-      return;
-    }
-    if (num30Price < 0) {
-      setErrorMsg(
-        isTamil ? 'விலை 0 அல்லது அதிகமாக இருக்க வேண்டும்' : 'Price cannot be negative'
+          ? 'தாரா எண்ணிக்கையை உள்ளிடவும் (0 விட அதிகமாக)'
+          : 'Please enter tray quantity (greater than 0)'
       );
       return;
     }
 
     setIsSaving(true);
     setErrorMsg(null);
-
-    // 1 Tara = 30 eggs
-    const totalEggsFromTara = Math.round(taraCount * 30);
-
-    // Stock cost per egg for profit calculation
-    const calculatedCostPerEgg = num30Price > 0 ? parseFloat((num30Price / 30).toFixed(2)) : 0;
-
-    // Sets today's stock based on entered Taras
-    const newOpeningStock = totalEggsFromTara + currentEggsSold;
-    const newImportedStock = totalEggsFromTara;
-    const newRemainingStock = Math.max(0, totalEggsFromTara - currentEggsSold);
-
-    const updatedStock: DailyStock = {
-      date: todayStr,
-      openingStock: newOpeningStock,
-      importedStock: newImportedStock,
-      eggsSold: currentEggsSold,
-      remainingStock: newRemainingStock,
-      purchaseCost: calculatedCostPerEgg,
-      updatedAt: new Date().toISOString(),
-    };
+    playPrintClickSound();
 
     try {
-      await EggAgencyService.saveTodayStock(updatedStock);
+      const updatedStock = await EggAgencyService.addStockToToday({
+        date: todayStr,
+        trays: enteredTrays,
+        mode,
+      });
+
       onStockUpdated(updatedStock);
+      playChimeSound();
 
-      // Save purchase cost into today's price as well so profit calculations use it immediately
-      if (calculatedCostPerEgg > 0) {
-        const todayPriceDoc = await EggAgencyService.getTodayPrice(todayStr);
-        if (todayPriceDoc) {
-          await EggAgencyService.saveTodayPrice({
-            ...todayPriceDoc,
-            purchaseCost: calculatedCostPerEgg,
-          });
-        }
-      }
+      const message =
+        mode === 'add'
+          ? isTamil
+            ? `+${enteredTrays} தாரா சேர்க்கப்பட்டது! புதிய கையிருப்பு: ${Math.floor(updatedStock.remainingStock / 30)} தாரா`
+            : `+${enteredTrays} Trays added! New stock: ${Math.floor(updatedStock.remainingStock / 30)} Trays`
+          : isTamil
+          ? `கையிருப்பு ${enteredTrays} தாராவாக அமைக்கப்பட்டது!`
+          : `Stock updated to ${enteredTrays} Trays!`;
 
-      setSuccessMsg(
-        isTamil
-          ? `${taraCount} தாரா வெற்றிகரமாக சேர்க்கப்பட்டது!`
-          : `${taraCount} Taras stock successfully saved!`
-      );
+      setSuccessMsg(message);
       setTimeout(() => {
         onClose();
       }, 700);
@@ -115,28 +97,73 @@ export const StockImportModal: React.FC<Props> = ({
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in select-none">
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
         {/* Header */}
-        <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
-          <h3 className="font-black text-base md:text-lg">
-            {isTamil ? 'கையிருப்பு தாராவில் (1 தாரா = 30 முட்டை)' : 'Stock Import (1 Tara = 30 Eggs)'}
-          </h3>
+        <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between shrink-0">
+          <div>
+            <h3 className="font-black text-base md:text-lg leading-tight">
+              {isTamil ? 'கையிருப்பு வரவு (1 தாரா = 30 முட்டை)' : 'Stock Import (1 Tara = 30 Eggs)'}
+            </h3>
+            <p className="text-xs text-blue-200 font-bold">
+              {isTamil
+                ? `தற்போதைய கையிருப்பு: ${currentRemainingTrays} தாரா (${currentRemainingEggs} முட்டை)`
+                : `Current Stock: ${currentRemainingTrays} Trays (${currentRemainingEggs} Eggs)`}
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-blue-700 text-blue-100 transition-colors"
+            className="p-1.5 rounded-full hover:bg-blue-700 text-blue-100 transition-colors cursor-pointer"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
         <form onSubmit={handleImport} className="p-5 space-y-4">
-          {/* Clean Stock Input in 1 Tara without clutter */}
+          {/* Mode Selector Pill: Add to Stock vs Set Total */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl gap-1 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('add');
+                setTaraCountStr('');
+                setErrorMsg(null);
+              }}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                mode === 'add'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-white/60'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>{isTamil ? '➕ கையிருப்பில் சேர் (Add)' : '➕ Add to Stock'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('set');
+                setTaraCountStr(String(currentRemainingTrays));
+                setErrorMsg(null);
+              }}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                mode === 'set'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-700 hover:bg-white/60'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>{isTamil ? '✏️ மொத்தத்தை மாற்று' : '✏️ Set Total'}</span>
+            </button>
+          </div>
+
+          {/* Clean Input for Quantity in Trays */}
           <div className="space-y-1.5">
-            <label className="text-sm font-black text-slate-800 block">
-              <span>
-                {isTamil
-                  ? '1 தாரா (30 முட்டை) கையிருப்பு எண்ணிக்கை'
-                  : '1 Tara (30 Eggs) Stock Quantity'}
-              </span>
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wide block">
+              {mode === 'add'
+                ? isTamil
+                  ? 'சேர்க்க வேண்டிய தாரா எண்ணிக்கை (+தாரா)'
+                  : 'Stock to Add (+Trays)'
+                : isTamil
+                ? 'மொத்த தாரா எண்ணிக்கை (Total Trays)'
+                : 'Total Stock Quantity (Trays)'}
             </label>
 
             <div className="relative">
@@ -149,70 +176,52 @@ export const StockImportModal: React.FC<Props> = ({
                   setTaraCountStr(e.target.value);
                   setErrorMsg(null);
                 }}
-                placeholder="0"
-                className="w-full bg-slate-50 border-2 border-slate-300 focus:border-blue-500 rounded-2xl px-4 py-3 text-3xl font-black text-slate-900 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                placeholder={mode === 'add' ? 'e.g. 4' : '0'}
+                className="w-full bg-slate-50 border-2 border-blue-400 focus:border-blue-600 rounded-2xl px-4 py-3 text-3xl font-black text-blue-950 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden shadow-inner"
                 autoFocus
               />
             </div>
-          </div>
 
-          {/* Stock Purchase Price for 30 Eggs / 1 Tara (Used for Profit Calculation) */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-black text-slate-800 block">
+            {/* Simple clean calculation line */}
+            <div className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-center">
+              {mode === 'add' ? (
                 <span>
-                  {isTamil
-                    ? 'கொள்முதல் அடக்க விலை (1 தாரா / 30 முட்டை)'
-                    : 'Stock Purchase Price (1 Tara / 30 Eggs)'}
+                  {isTamil ? 'இருப்பு' : 'Current'}:{' '}
+                  <strong className="text-slate-900 font-mono">{currentRemainingTrays}</strong> +{' '}
+                  {isTamil ? 'சேர்ப்பது' : 'Add'}:{' '}
+                  <strong className="text-blue-700 font-mono">+{enteredTrays}</strong> ={' '}
+                  {isTamil ? 'மொத்த இருப்பு' : 'New Stock'}:{' '}
+                  <strong className="text-emerald-700 font-mono">
+                    {calculatedNewTotalTrays} {isTamil ? 'தாரா' : 'Trays'}
+                  </strong>{' '}
+                  <span className="text-slate-500 font-normal">
+                    ({calculatedNewTotalEggs} {t('eggs')})
+                  </span>
                 </span>
-              </label>
-              <span className="text-[11px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" />
-                {isTamil ? 'லாபம் கணக்கிட' : 'For Profit'}
-              </span>
-            </div>
-
-            <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 font-black text-lg">
-                ₹
-              </span>
-              <input
-                type="number"
-                step="any"
-                min="0"
-                value={pricePer30Str}
-                onChange={(e) => {
-                  setPricePer30Str(e.target.value);
-                  setErrorMsg(null);
-                }}
-                placeholder="0"
-                className="w-full bg-emerald-50/30 border-2 border-emerald-300 focus:border-emerald-500 rounded-2xl pl-9 pr-4 py-3 text-2xl font-black text-emerald-950 font-mono focus:ring-2 focus:ring-emerald-400 focus:outline-hidden"
-              />
-            </div>
-
-            {/* Helper: Profit calculation indicator & 1-egg equivalent */}
-            <div className="flex items-center justify-between text-xs font-bold pt-0.5 px-1">
-              <span className="text-emerald-700">
-                {isTamil ? 'விற்பனை லாபம் கணக்கிட பயன்படும்' : 'Used to calculate today’s profit'}
-              </span>
-              {num30Price > 0 && (
-                <span className="text-slate-600 font-mono">
-                  (₹{(num30Price / 30).toFixed(2)} / egg)
+              ) : (
+                <span>
+                  {isTamil ? 'புதிய இருப்பு' : 'New Total'}:{' '}
+                  <strong className="text-blue-900 font-mono">
+                    {calculatedNewTotalTrays} {isTamil ? 'தாரா' : 'Trays'}
+                  </strong>{' '}
+                  <span className="text-slate-500 font-normal">
+                    ({calculatedNewTotalEggs} {t('eggs')})
+                  </span>
                 </span>
               )}
             </div>
           </div>
 
           {successMsg && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-2xl text-sm font-bold flex items-center gap-2 animate-in fade-in">
-              <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 animate-in fade-in">
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {errorMsg && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-2xl text-sm font-bold flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -222,9 +231,23 @@ export const StockImportModal: React.FC<Props> = ({
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black text-base py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black text-sm md:text-base py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.98] cursor-pointer"
             >
-              <span>{isSaving ? t('loading') : t('saveStockButton')}</span>
+              {isSaving ? (
+                <span>{t('loading')}</span>
+              ) : mode === 'add' ? (
+                <span>
+                  {isTamil
+                    ? `➕ கையிருப்பில் சேர் (+${enteredTrays || 0} தாரா)`
+                    : `➕ Add to Stock (+${enteredTrays || 0} Trays)`}
+                </span>
+              ) : (
+                <span>
+                  {isTamil
+                    ? `✏️ கையிருப்பை ${enteredTrays || 0} தாராவாக அமை`
+                    : `✏️ Set Stock to ${enteredTrays || 0} Trays`}
+                </span>
+              )}
             </button>
           </div>
         </form>
