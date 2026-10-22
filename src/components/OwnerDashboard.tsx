@@ -40,6 +40,9 @@ import {
   ShieldCheck,
   XCircle,
   Eye,
+  Banknote,
+  Smartphone,
+  Clock,
 } from 'lucide-react';
 
 interface Props {
@@ -214,6 +217,15 @@ export const OwnerDashboard: React.FC<Props> = ({
   const totalSales = bills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
   const totalEggsSold = bills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
   const totalBillsCount = bills.length;
+
+  // Payment Breakdown Calculations
+  const cashBills = bills.filter((b) => (b.paymentMethod || 'cash') === 'cash');
+  const gpayBills = bills.filter((b) => b.paymentMethod === 'gpay');
+  const creditBills = bills.filter((b) => b.paymentMethod === 'credit');
+
+  const totalCashWithEmployee = cashBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalGPayCollected = gpayBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalCreditOutstanding = creditBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
 
   // Opening stock & Remaining Stock
   const openingStock = todayStock?.openingStock ?? 0;
@@ -560,6 +572,42 @@ export const OwnerDashboard: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* Payment Collections Breakdown: Cash with Employee, GPay, Credit */}
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+              {/* Card A: CASH WITH EMPLOYEE */}
+              <div className="bg-emerald-50 rounded-xl p-2 sm:p-2.5 border border-emerald-300 shadow-2xs">
+                <div className="text-[10px] font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1 truncate">
+                  <Banknote className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span className="truncate">{isTamil ? 'கையில் ரொக்கம்' : 'Cash in Hand'}</span>
+                </div>
+                <div className="text-base sm:text-xl font-black text-emerald-950 font-mono mt-1 tracking-tight truncate">
+                  {formatIndianCurrency(totalCashWithEmployee)}
+                </div>
+              </div>
+
+              {/* Card B: GPAY COLLECTED */}
+              <div className="bg-blue-50 rounded-xl p-2 sm:p-2.5 border border-blue-300 shadow-2xs">
+                <div className="text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-1 truncate">
+                  <Smartphone className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                  <span className="truncate">{isTamil ? 'GPay வசூல்' : 'GPay / UPI'}</span>
+                </div>
+                <div className="text-base sm:text-xl font-black text-blue-950 font-mono mt-1 tracking-tight truncate">
+                  {formatIndianCurrency(totalGPayCollected)}
+                </div>
+              </div>
+
+              {/* Card C: CREDIT */}
+              <div className="bg-amber-50 rounded-xl p-2 sm:p-2.5 border border-amber-300 shadow-2xs">
+                <div className="text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center gap-1 truncate">
+                  <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span className="truncate">{isTamil ? 'கடன் பாக்கி' : 'Credit / Due'}</span>
+                </div>
+                <div className="text-base sm:text-xl font-black text-amber-950 font-mono mt-1 tracking-tight truncate">
+                  {formatIndianCurrency(totalCreditOutstanding)}
+                </div>
+              </div>
+            </div>
+
             {/* Grid 2 Columns: TOTAL STOCK & REMAINING STOCK - Compact */}
             <div className="grid grid-cols-2 gap-2">
               {/* Card 2A: TOTAL STOCK */}
@@ -581,9 +629,6 @@ export const OwnerDashboard: React.FC<Props> = ({
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] font-black text-slate-600 mt-0.5 font-mono">
-                  {openingStock.toLocaleString('en-IN')} {isTamil ? 'மொத்த முட்டை' : 'Total Eggs'}
-                </div>
               </div>
 
               {/* Card 2B: REMAINING STOCK */}
@@ -602,10 +647,6 @@ export const OwnerDashboard: React.FC<Props> = ({
                       (+{remainingStock % 30})
                     </span>
                   )}
-                </div>
-                {/* Under show the remaining egg */}
-                <div className="text-[10px] font-black text-slate-600 mt-0.5 font-mono">
-                  {remainingStock.toLocaleString('en-IN')} {isTamil ? 'மீதமுள்ள முட்டை' : 'Remaining Eggs'}
                 </div>
               </div>
             </div>
@@ -654,26 +695,60 @@ export const OwnerDashboard: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Employee-wise Sales Card - Compact */}
+          {/* Employee-wise Sales & Cash in Hand with Employee - Compact */}
           <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
               <div className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
                 <User className="w-4 h-4 text-blue-600" />
-                <span>{t('staff')} {t('overview')}</span>
+                <span>{t('staff')} {t('overview')} - Staff Ramesh</span>
               </div>
             </div>
 
-            <div className="p-2 sm:p-2.5 bg-blue-50/80 border border-blue-100 rounded-lg flex items-center justify-between">
-              <div className="space-y-0.5">
-                <div className="text-xs font-bold text-slate-700">
-                  {totalBillsCount} {t('totalBills')} • {totalEggsSold} {t('eggsSold')}
+            {/* Cash in Hand with Employee Highlight Banner */}
+            <div className="p-2.5 bg-emerald-50/90 border-2 border-emerald-300 rounded-xl flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Banknote className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-emerald-950">
+                    {isTamil ? 'ஊழியரிடம் உள்ள மீதமுள்ள ரொக்கம்' : 'Remaining Cash with Employee'}
+                  </div>
+                  <div className="text-[10px] font-bold text-emerald-700">
+                    {isTamil ? 'ரொக்க வசூல் தொகை' : 'Total cash in hand collected'}
+                  </div>
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider">{t('total')}</div>
-                <div className="text-base sm:text-lg font-black text-blue-800 font-mono">
-                  {formatIndianCurrency(totalSales)}
+                <div className="text-lg sm:text-xl font-black text-emerald-900 font-mono">
+                  {formatIndianCurrency(totalCashWithEmployee)}
+                </div>
+                <div className="text-[10px] font-bold text-emerald-700 font-mono">
+                  {cashBills.length} {isTamil ? 'ரொக்க பில்கள்' : 'cash bills'}
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-breakdown: GPay and Credit Collections with Staff */}
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <div className="p-2 bg-blue-50/80 border border-blue-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black text-blue-900">{isTamil ? 'GPay வசூல்' : 'GPay Collected'}</div>
+                  <div className="text-[9px] font-bold text-blue-700">{gpayBills.length} {isTamil ? 'பில்கள்' : 'bills'}</div>
+                </div>
+                <div className="font-mono font-black text-sm sm:text-base text-blue-900">
+                  {formatIndianCurrency(totalGPayCollected)}
+                </div>
+              </div>
+
+              <div className="p-2 bg-amber-50/80 border border-amber-200 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-black text-amber-900">{isTamil ? 'கடன் தொகை' : 'Credit Total'}</div>
+                  <div className="text-[9px] font-bold text-amber-700">{creditBills.length} {isTamil ? 'பில்கள்' : 'bills'}</div>
+                </div>
+                <div className="font-mono font-black text-sm sm:text-base text-amber-900">
+                  {formatIndianCurrency(totalCreditOutstanding)}
                 </div>
               </div>
             </div>
@@ -716,6 +791,23 @@ export const OwnerDashboard: React.FC<Props> = ({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono font-black text-xs sm:text-sm text-blue-900">
                           {t('billNo')} #{b.billNumber}
+                        </span>
+
+                        {/* Payment Method Badge */}
+                        <span
+                          className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                            b.paymentMethod === 'gpay'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : b.paymentMethod === 'credit'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}
+                        >
+                          {b.paymentMethod === 'gpay'
+                            ? (isTamil ? 'ஜிபே' : 'GPAY')
+                            : b.paymentMethod === 'credit'
+                            ? (isTamil ? 'கடன்' : 'CREDIT')
+                            : (isTamil ? 'ரொக்கம்' : 'CASH')}
                         </span>
 
                         {b.deleteRequest?.status === 'pending' && (

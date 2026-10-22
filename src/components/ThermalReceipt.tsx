@@ -201,9 +201,31 @@ export const ThermalReceipt: React.FC<Props> = ({
                   {t('billNo')} #{currentBill.billNumber}
                 </span>
 
-                <span className="text-[11px] font-black uppercase bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-0.5 rounded-lg flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                  <span>{isTamil ? 'ரொக்கம்' : 'CASH'}</span>
+                <span
+                  className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-lg flex items-center gap-1 border ${
+                    currentBill.paymentMethod === 'gpay'
+                      ? 'bg-blue-100 text-blue-900 border-blue-300'
+                      : currentBill.paymentMethod === 'credit'
+                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                      : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                  }`}
+                >
+                  <CheckCircle2
+                    className={`w-3.5 h-3.5 ${
+                      currentBill.paymentMethod === 'gpay'
+                        ? 'text-blue-700'
+                        : currentBill.paymentMethod === 'credit'
+                        ? 'text-amber-700'
+                        : 'text-emerald-700'
+                    }`}
+                  />
+                  <span>
+                    {currentBill.paymentMethod === 'gpay'
+                      ? (isTamil ? 'ஜிபே (GPay)' : 'GPAY / UPI')
+                      : currentBill.paymentMethod === 'credit'
+                      ? (isTamil ? 'கடன் (Credit)' : 'CREDIT')
+                      : (isTamil ? 'கையில் ரொக்கம்' : 'CASH')}
+                  </span>
                 </span>
               </div>
 

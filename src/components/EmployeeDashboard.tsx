@@ -40,6 +40,9 @@ import {
   Receipt,
   Download,
   Check,
+  Banknote,
+  Clock,
+  Wallet,
 } from 'lucide-react';
 
 interface Props {
@@ -68,9 +71,10 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const [isCreatingBill, setIsCreatingBill] = useState(false);
   const [createdBill, setCreatedBill] = useState<Bill | null>(null);
 
-  // Editable Amount state
+  // Editable Amount and Tara Price state
   const [customAmountStr, setCustomAmountStr] = useState<string>('');
   const [isEditingAmount, setIsEditingAmount] = useState<boolean>(false);
+  const [customTaraPriceStr, setCustomTaraPriceStr] = useState<string>('');
 
   const [showPrinterModal, setShowPrinterModal] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -81,6 +85,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const [draftEggQuantity, setDraftEggQuantity] = useState(0);
   const [billToDeleteRequest, setBillToDeleteRequest] = useState<Bill | null>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Search in history
   const [historySearch, setHistorySearch] = useState('');
@@ -149,11 +154,17 @@ export const EmployeeDashboard: React.FC<Props> = ({
   // Billing calculations - measured in 1 Tara / 1 Tray (30 eggs)
   const trayCount = parseInt(trayQuantityStr || '0', 10);
   const totalEggs = trayCount * 30;
-  const pricePerEgg = todayPrice?.pricePerEgg ?? 0;
-  const pricePer30Eggs = todayPrice?.pricePer30Eggs ?? (pricePerEgg * 30);
+  const officialPricePerEgg = todayPrice?.pricePerEgg ?? 0;
+  const officialPricePer30Eggs = todayPrice?.pricePer30Eggs ?? (officialPricePerEgg * 30);
+
+  // Editable 1 Tara Price: can be edited directly by employee in the center of the display box
+  const effectivePricePer30Eggs = customTaraPriceStr !== '' && !isNaN(Number(customTaraPriceStr)) && Number(customTaraPriceStr) >= 0
+    ? Number(customTaraPriceStr)
+    : officialPricePer30Eggs;
+  const effectivePricePerEgg = parseFloat((effectivePricePer30Eggs / 30).toFixed(2));
 
   // Calculated Total Amount (in 1 Tara)
-  const rawTotal = trayCount * pricePer30Eggs;
+  const rawTotal = trayCount * effectivePricePer30Eggs;
   const calculatedTotal = Math.round(rawTotal);
 
   // Final Total Amount (honors custom edited amount if set by employee)
@@ -206,9 +217,9 @@ export const EmployeeDashboard: React.FC<Props> = ({
     setBillingError(null);
   };
 
-  // Create and show bill receipt directly if shop already chosen, or prompt for shop
-  const handleCreateBill = async () => {
-    if (pricePer30Eggs <= 0 && pricePerEgg <= 0) {
+  // Triggered when employee clicks "Bill OK" - validates and opens the 3-option payment modal
+  const handleBillOkClick = () => {
+    if (effectivePricePer30Eggs <= 0 && effectivePricePerEgg <= 0) {
       setBillingError(
         isTamil
           ? 'இன்றைய தாரா விலை இன்னும் நிர்ணயிக்கப்படவில்லை! உரிமையாளர் முதலில் விலையை நிர்ணயிக்க வேண்டும்.'
@@ -238,7 +249,15 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
     setBillingError(null);
     playPrintClickSound();
+    setShowPaymentModal(true);
+  };
+
+  // Called when the employee selects one of the 3 payment options: Cash in hand, GPay, or Credit
+  const handleSelectPaymentMethod = async (paymentMethod: 'cash' | 'gpay' | 'credit') => {
+    setShowPaymentModal(false);
     setIsCreatingBill(true);
+    setBillingError(null);
+    playPrintClickSound();
 
     try {
       // 1. Create and save bill in Firestore database & offline storage
@@ -246,14 +265,17 @@ export const EmployeeDashboard: React.FC<Props> = ({
         eggQuantity: totalEggs,
         employeeName: 'Staff Employee',
         customTotalAmount: finalTotalAmount,
-        paymentStatus: 'paid',
-        paidAmount: finalTotalAmount,
-        pendingAmount: 0,
+        customPricePer30Eggs: effectivePricePer30Eggs,
+        paymentMethod,
+        paymentStatus: paymentMethod === 'credit' ? 'pending' : 'paid',
+        paidAmount: paymentMethod === 'credit' ? 0 : finalTotalAmount,
+        pendingAmount: paymentMethod === 'credit' ? finalTotalAmount : 0,
       });
 
       // 2. Clear entered quantity and custom states
       setTrayQuantityStr('');
       setCustomAmountStr('');
+      setCustomTaraPriceStr('');
       setIsEditingAmount(false);
 
       playChimeSound();
@@ -266,10 +288,17 @@ export const EmployeeDashboard: React.FC<Props> = ({
         thermalPrinter.printBill(savedBill, settings, printer.paperWidth).catch(() => {});
       }
 
+      const methodLabel =
+        paymentMethod === 'cash'
+          ? (isTamil ? 'கையில் ரொக்கம்' : 'Cash in Hand')
+          : paymentMethod === 'gpay'
+          ? 'GPay'
+          : (isTamil ? 'கடன்' : 'Credit');
+
       setToastMessage(
         isTamil
-          ? `பில் #${savedBill.billNumber} வெற்றிகரமாக உருவானது!`
-          : `Bill #${savedBill.billNumber} created successfully!`
+          ? `பில் #${savedBill.billNumber} (${methodLabel}: ₹${savedBill.totalAmount}) வெற்றிகரமாக உருவானது!`
+          : `Bill #${savedBill.billNumber} (${methodLabel}: ₹${savedBill.totalAmount}) created successfully!`
       );
       setTimeout(() => setToastMessage(null), 3500);
     } catch (err: any) {
@@ -309,6 +338,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
       const savedBill = await EggAgencyService.createBill({
         eggQuantity: draftEggQuantity,
         employeeName: 'Staff Employee',
+        customPricePer30Eggs: effectivePricePer30Eggs,
+        customTotalAmount: finalTotalAmount,
       });
 
       playChimeSound();
@@ -456,12 +487,12 @@ export const EmployeeDashboard: React.FC<Props> = ({
               </div>
               <div className="mt-0.5">
                 <div className="text-lg sm:text-xl font-black text-blue-900 font-mono leading-tight">
-                  ₹{pricePer30Eggs}
+                  ₹{officialPricePer30Eggs}
                 </div>
               </div>
             </div>
 
-            {/* Card 2: In Stock (Trays & Under show Remaining Eggs) */}
+            {/* Card 2: In Stock (Trays) */}
             <div className="bg-white rounded-xl p-2 sm:p-2.5 border border-slate-200 shadow-2xs flex flex-col justify-between">
               <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
                 <span>{isTamil ? 'கையிருப்பு (தாரா)' : 'In Stock (Trays)'}</span>
@@ -479,33 +510,51 @@ export const EmployeeDashboard: React.FC<Props> = ({
                   )}
                   <span className="text-xs font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
                 </div>
-                {/* Under show the remaining egg */}
-                <div className="text-[10px] font-black text-slate-600 font-mono mt-0.5">
-                  {remainingStock.toLocaleString('en-IN')} {isTamil ? 'மீதமுள்ள முட்டை' : 'Remaining Eggs'}
-                </div>
               </div>
             </div>
           </div>
 
           {/* Quantity & Calculation Card with Directly Editable Total Amount */}
           <div className="bg-white rounded-xl p-2 sm:p-2.5 border border-slate-200 shadow-2xs space-y-2">
-            {/* Display Box with Quantity in Trays on Left, Directly Editable Total Amount on Right */}
-            <div className="bg-slate-50 border border-blue-300 rounded-xl p-2 sm:p-2.5 flex items-center justify-between gap-2 shadow-inner">
+            {/* Display Box with Quantity in Trays on Left, Editable Tara Price in Center, Editable Total Amount on Right */}
+            <div className="bg-slate-50 border border-blue-300 rounded-xl p-2 sm:p-2.5 flex items-center justify-between gap-1 sm:gap-2 shadow-inner">
               {/* Left: Entered Quantity in Trays */}
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold text-slate-500">
-                  {isTamil ? 'அளவு (தாரா)' : 'Quantity (Trays)'}
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-bold text-slate-500 truncate">
+                  {isTamil ? 'அளவு (தாரா)' : 'Qty (Trays)'}
                 </div>
-                <div className="text-2xl font-black text-slate-900 font-mono tracking-tight flex items-baseline gap-1 truncate mt-0.5">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono tracking-tight flex items-baseline gap-1 truncate mt-0.5">
                   <span>{trayQuantityStr || '0'}</span>
                   <span className="text-xs font-black text-blue-700 font-sans">
-                    {isTamil ? 'தாரா' : 'Trays'}
+                    {isTamil ? 'தாரா' : 'T'}
                   </span>
                 </div>
               </div>
 
-              {/* Divider */}
-              <div className="h-8 w-px bg-slate-300 shrink-0" />
+              {/* Left Divider */}
+              <div className="h-9 w-px bg-slate-300 shrink-0" />
+
+              {/* Center: Directly Editable 1 Tara Price */}
+              <div className="text-center shrink-0 px-1.5 flex items-center justify-center">
+                <span className="text-base sm:text-lg font-black text-blue-700 font-mono mr-0.5">₹</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={customTaraPriceStr !== '' ? customTaraPriceStr : (officialPricePer30Eggs > 0 ? String(officialPricePer30Eggs) : '')}
+                  onChange={(e) => {
+                    setCustomTaraPriceStr(e.target.value);
+                    // Clear manual total amount override so it recalculates using new tara rate
+                    setCustomAmountStr('');
+                    setIsEditingAmount(false);
+                  }}
+                  placeholder={String(officialPricePer30Eggs || '0')}
+                  className="w-18 sm:w-22 px-1.5 py-1 border border-blue-400 focus:border-blue-700 rounded-lg text-lg sm:text-xl font-black font-mono text-blue-900 bg-white shadow-inner text-center focus:outline-hidden"
+                  title={isTamil ? '1 தாரா விலை' : '1 Tara Price'}
+                />
+              </div>
+
+              {/* Right Divider */}
+              <div className="h-9 w-px bg-slate-300 shrink-0" />
 
               {/* Right: Directly Editable Total Amount */}
               <div className="text-right shrink-0">
@@ -526,8 +575,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
                   )}
                 </div>
 
-                <div className="flex items-center justify-end gap-1 mt-0.5">
-                  <span className="text-lg sm:text-xl font-black text-blue-700 font-mono">₹</span>
+                <div className="flex items-center justify-end gap-0.5 mt-0.5">
+                  <span className="text-base sm:text-lg font-black text-blue-700 font-mono">₹</span>
                   <input
                     type="number"
                     value={customAmountStr !== '' ? customAmountStr : (calculatedTotal > 0 ? calculatedTotal : '')}
@@ -536,14 +585,9 @@ export const EmployeeDashboard: React.FC<Props> = ({
                       setIsEditingAmount(true);
                     }}
                     placeholder={String(calculatedTotal || '0')}
-                    className="w-24 sm:w-28 px-1.5 py-0.5 border border-blue-400 focus:border-blue-700 rounded-lg text-lg sm:text-xl font-black font-mono text-blue-900 bg-white shadow-inner text-right focus:outline-hidden"
+                    className="w-20 sm:w-24 px-1.5 py-0.5 border border-blue-400 focus:border-blue-700 rounded-lg text-base sm:text-lg font-black font-mono text-blue-900 bg-white shadow-inner text-right focus:outline-hidden"
                     title={isTamil ? 'தொகையை நேரடியாக மாற்றலாம்' : 'Directly editable total amount'}
                   />
-                </div>
-                <div className="text-[9px] font-bold text-blue-600 mt-0.5">
-                  {customAmountStr !== ''
-                    ? (isTamil ? '✏️ மாற்றப்பட்ட தொகை' : '✏️ Custom Amount')
-                    : (isTamil ? '✏️ தொகையை மாற்றலாம்' : '✏️ Editable Amount')}
                 </div>
               </div>
             </div>
@@ -631,11 +675,11 @@ export const EmployeeDashboard: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Main Action Button - Generate Bill & Print Receipt - Compact */}
+          {/* Main Action Button - Bill OK - Compact & High Contrast */}
           <div className="pt-0.5 pb-2">
             <button
               type="button"
-              onClick={() => handleCreateBill()}
+              onClick={() => handleBillOkClick()}
               disabled={isCreatingBill || trayCount <= 0 || isStockInsufficient}
               className={`w-full py-2.5 px-3 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer ${
                 trayCount > 0 && !isStockInsufficient
@@ -643,12 +687,12 @@ export const EmployeeDashboard: React.FC<Props> = ({
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               }`}
             >
-              <Receipt className="w-4 h-4 shrink-0" />
+              <Check className="w-5 h-5 shrink-0 stroke-[3]" />
               <div className="text-center leading-tight">
-                <div>
+                <div className="text-sm font-black tracking-wide">
                   {isCreatingBill
-                    ? (isTamil ? 'பில் உருவாகிறது...' : 'Generating Bill...')
-                    : (isTamil ? 'பில் போடு & அச்சிடு' : 'Generate Bill & Print')}
+                    ? (isTamil ? 'பில் உருவாகிறது...' : 'Processing...')
+                    : (isTamil ? 'பில் சரி (Bill OK)' : 'Bill OK')}
                 </div>
                 {trayCount > 0 && !isStockInsufficient && !isCreatingBill && (
                   <div className="text-[11px] font-mono font-bold opacity-90 normal-case tracking-normal">
@@ -698,6 +742,23 @@ export const EmployeeDashboard: React.FC<Props> = ({
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-mono font-black text-xs sm:text-sm text-blue-900">
                         {t('billNo')} #{b.billNumber}
+                      </span>
+
+                      {/* Payment Method Badge */}
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                          b.paymentMethod === 'gpay'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                            : b.paymentMethod === 'credit'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}
+                      >
+                        {b.paymentMethod === 'gpay'
+                          ? (isTamil ? 'ஜிபே' : 'GPAY')
+                          : b.paymentMethod === 'credit'
+                          ? (isTamil ? 'கடன்' : 'CREDIT')
+                          : (isTamil ? 'ரொக்கம்' : 'CASH')}
                       </span>
 
                       <span
@@ -852,6 +913,114 @@ export const EmployeeDashboard: React.FC<Props> = ({
           onConfirmLogout={onLogout}
           onClose={() => setShowLogoutModal(false)}
         />
+      )}
+
+      {/* Payment Mode Selection Popup Modal (Prompted by "Bill OK") */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-4 sm:p-5 shadow-2xl border border-slate-300 space-y-4">
+            <div className="text-center space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-800 border border-blue-200 text-xs font-black uppercase tracking-wide">
+                <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                <span>{isTamil ? 'பில் சரி - கட்டண முறை' : 'Bill OK - Select Payment'}</span>
+              </div>
+              
+              <div className="text-3xl font-black text-slate-900 font-mono tracking-tight pt-1">
+                ₹{finalTotalAmount.toLocaleString('en-IN')}
+              </div>
+              <div className="text-xs font-bold text-slate-600">
+                {trayCount} {isTamil ? 'தாரா' : 'Trays'} ({totalEggs} {isTamil ? 'முட்டை' : 'Eggs'}) • @ ₹{effectivePricePer30Eggs}/தாரா
+              </div>
+            </div>
+
+            {/* 3 Payment Options */}
+            <div className="space-y-2 pt-1">
+              {/* Option 1: Cash in hand */}
+              <button
+                type="button"
+                onClick={() => handleSelectPaymentMethod('cash')}
+                disabled={isCreatingBill}
+                className="w-full p-3 rounded-2xl border-2 border-emerald-500 bg-emerald-50/90 hover:bg-emerald-100 active:bg-emerald-200 flex items-center justify-between text-left transition-all active:scale-98 shadow-xs cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-black text-sm text-emerald-950">
+                      {isTamil ? 'கையில் ரொக்கம் (Cash in hand)' : 'Cash in hand'}
+                    </div>
+                    <div className="text-[11px] font-bold text-emerald-700">
+                      {isTamil ? 'ஊழியர் கைவசம் ரொக்கம் பெறப்பட்டது' : 'Cash collected with employee'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-md font-mono">
+                  ₹{finalTotalAmount}
+                </span>
+              </button>
+
+              {/* Option 2: GPay */}
+              <button
+                type="button"
+                onClick={() => handleSelectPaymentMethod('gpay')}
+                disabled={isCreatingBill}
+                className="w-full p-3 rounded-2xl border-2 border-blue-500 bg-blue-50/90 hover:bg-blue-100 active:bg-blue-200 flex items-center justify-between text-left transition-all active:scale-98 shadow-xs cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <Smartphone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-black text-sm text-blue-950">
+                      {isTamil ? 'GPay (ஜிபே / UPI)' : 'GPay'}
+                    </div>
+                    <div className="text-[11px] font-bold text-blue-700">
+                      {isTamil ? 'Google Pay ஆன்லைன் கட்டணம்' : 'Collected via GPay / Online'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-blue-800 bg-blue-200/80 px-2 py-0.5 rounded-md font-mono">
+                  ₹{finalTotalAmount}
+                </span>
+              </button>
+
+              {/* Option 3: Credit */}
+              <button
+                type="button"
+                onClick={() => handleSelectPaymentMethod('credit')}
+                disabled={isCreatingBill}
+                className="w-full p-3 rounded-2xl border-2 border-amber-500 bg-amber-50/90 hover:bg-amber-100 active:bg-amber-200 flex items-center justify-between text-left transition-all active:scale-98 shadow-xs cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="font-black text-sm text-amber-950">
+                      {isTamil ? 'Credit (கடன் பில்)' : 'Credit'}
+                    </div>
+                    <div className="text-[11px] font-bold text-amber-700">
+                      {isTamil ? 'பாக்கி பில் / பின்னர் செலுத்தப்படும்' : 'Pending payment / Customer credit'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-md font-mono">
+                  ₹{finalTotalAmount}
+                </span>
+              </button>
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={() => setShowPaymentModal(false)}
+              className="w-full py-2 text-center text-xs font-black text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            >
+              {isTamil ? 'ரத்து செய்க (Cancel)' : 'Cancel'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

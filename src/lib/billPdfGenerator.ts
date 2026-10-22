@@ -81,8 +81,16 @@ export async function generateBillPdf(
   doc.text(`Payment:`, 58, 41);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(4, 120, 87); // emerald-700
-  doc.text(`CASH SALE`, 58, 47);
+  if (bill.paymentMethod === 'gpay') {
+    doc.setTextColor(29, 78, 216); // blue-700
+    doc.text(`GPAY / UPI`, 58, 47);
+  } else if (bill.paymentMethod === 'credit') {
+    doc.setTextColor(180, 83, 9); // amber-700
+    doc.text(`CREDIT (DUE)`, 58, 47);
+  } else {
+    doc.setTextColor(4, 120, 87); // emerald-700
+    doc.text(`CASH SALE`, 58, 47);
+  }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(71, 85, 105);

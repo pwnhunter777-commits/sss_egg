@@ -315,11 +315,13 @@ export const EggAgencyService = {
     employeeName?: string;
     customerName?: string;
     customerPhone?: string;
-    paymentStatus?: 'paid';
+    paymentMethod?: 'cash' | 'gpay' | 'credit';
+    paymentStatus?: 'paid' | 'pending';
     paidAmount?: number;
     pendingAmount?: number;
     date?: string;
     customTotalAmount?: number;
+    customPricePer30Eggs?: number;
   }): Promise<Bill> {
     const date = params.date || getTodayDateString();
     const eggQuantity = Number(params.eggQuantity);
@@ -338,8 +340,11 @@ export const EggAgencyService = {
 
     // 2. Get today's locked price
     const activePrice = await this.getTodayPrice(date);
-    const pricePerEgg = activePrice.pricePerEgg;
-    const pricePer30Eggs = activePrice.pricePer30Eggs;
+    const pricePer30Eggs =
+      params.customPricePer30Eggs !== undefined && !isNaN(params.customPricePer30Eggs) && params.customPricePer30Eggs > 0
+        ? params.customPricePer30Eggs
+        : activePrice.pricePer30Eggs;
+    const pricePerEgg = parseFloat((pricePer30Eggs / 30).toFixed(2));
     const purchaseCostPerEgg = activePrice.purchaseCost;
 
     // Pricing calculation:
@@ -365,6 +370,12 @@ export const EggAgencyService = {
     const billId = `bill_${date}_${billNumber}_${Date.now()}`;
     const currentTimeStr = formatTime(new Date());
 
+    const paymentMethod: 'cash' | 'gpay' | 'credit' = params.paymentMethod || 'cash';
+    const isCredit = paymentMethod === 'credit';
+    const paymentStatus: 'paid' | 'pending' = isCredit ? 'pending' : (params.paymentStatus || 'paid');
+    const paidAmount = isCredit ? 0 : (params.paidAmount !== undefined ? params.paidAmount : totalAmount);
+    const pendingAmount = isCredit ? totalAmount : (params.pendingAmount !== undefined ? params.pendingAmount : 0);
+
     const newBill: Bill = {
       billId,
       billNumber,
@@ -372,9 +383,10 @@ export const EggAgencyService = {
       employeeName: params.employeeName || 'Staff Ramesh',
       customerName: params.customerName || undefined,
       customerPhone: params.customerPhone || undefined,
-      paymentStatus: 'paid',
-      paidAmount: totalAmount,
-      pendingAmount: 0,
+      paymentMethod,
+      paymentStatus,
+      paidAmount,
+      pendingAmount,
       date,
       time: currentTimeStr,
       createdAt: new Date().toISOString(),
@@ -412,6 +424,7 @@ export const EggAgencyService = {
         employeeName: newBill.employeeName,
         eggQuantity,
         totalAmount,
+        paymentMethod,
         date,
         time: currentTimeStr,
         read: false,
@@ -432,6 +445,7 @@ export const EggAgencyService = {
         employeeName: newBill.employeeName,
         eggQuantity,
         totalAmount,
+        paymentMethod,
         date,
         time: currentTimeStr,
         read: false,

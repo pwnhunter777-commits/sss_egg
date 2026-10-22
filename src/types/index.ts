@@ -46,7 +46,8 @@ export interface Bill {
   employeeName: string;
   customerName?: string;
   customerPhone?: string;
-  paymentStatus?: 'paid';
+  paymentStatus?: 'paid' | 'pending';
+  paymentMethod?: 'cash' | 'gpay' | 'credit';
   paidAmount?: number;
   pendingAmount?: number;
   date: string; // YYYY-MM-DD
@@ -69,6 +70,7 @@ export interface BillNotification {
   employeeName: string;
   eggQuantity: number;
   totalAmount: number;
+  paymentMethod?: 'cash' | 'gpay' | 'credit';
   date: string;
   time: string;
   read: boolean;
