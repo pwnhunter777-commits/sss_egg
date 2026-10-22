@@ -73,6 +73,7 @@ export const OwnerDashboard: React.FC<Props> = ({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeReceiptBill, setActiveReceiptBill] = useState<Bill | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [billToCancel, setBillToCancel] = useState<Bill | null>(null);
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<'overview' | 'bills' | 'delete_requests'>('overview');
@@ -85,6 +86,8 @@ export const OwnerDashboard: React.FC<Props> = ({
       await EggAgencyService.approveBillDelete(bill, true);
       setBills((prev) => prev.filter((b) => b.billId !== bill.billId));
       setGlobalPendingRequests((prev) => prev.filter((b) => b.billId !== bill.billId));
+      const freshStock = await EggAgencyService.getTodayStock(selectedDate);
+      setTodayStock(freshStock);
       setActionFeedback(
         isTamil
           ? `பில் #${bill.billNumber} நீக்கப்பட்டது! ${bill.eggQuantity} முட்டைகள் மீண்டும் இருப்புக்கு சேர்க்கப்பட்டன.`
@@ -93,6 +96,26 @@ export const OwnerDashboard: React.FC<Props> = ({
       setTimeout(() => setActionFeedback(null), 4000);
     } catch (err) {
       console.error('Approve delete failed:', err);
+    }
+  };
+
+  const handleConfirmCancelBill = async () => {
+    if (!billToCancel) return;
+    try {
+      await EggAgencyService.approveBillDelete(billToCancel, true);
+      setBills((prev) => prev.filter((b) => b.billId !== billToCancel.billId));
+      setGlobalPendingRequests((prev) => prev.filter((b) => b.billId !== billToCancel.billId));
+      const freshStock = await EggAgencyService.getTodayStock(selectedDate);
+      setTodayStock(freshStock);
+      setActionFeedback(
+        isTamil
+          ? `பில் #${billToCancel.billNumber} ரத்து செய்யப்பட்டு ${billToCancel.eggQuantity} முட்டைகள் மீண்டும் கையிருப்புக்குத் திரும்பின!`
+          : `Bill #${billToCancel.billNumber} cancelled! ${billToCancel.eggQuantity} eggs returned to stock.`
+      );
+      setBillToCancel(null);
+      setTimeout(() => setActionFeedback(null), 4000);
+    } catch (err) {
+      console.error('Cancel bill failed:', err);
     }
   };
 
@@ -194,7 +217,9 @@ export const OwnerDashboard: React.FC<Props> = ({
 
   // Opening stock & Remaining Stock
   const openingStock = todayStock?.openingStock ?? 0;
-  const remainingStock = Math.max(0, openingStock - totalEggsSold);
+  const remainingStock = todayStock?.remainingStock !== undefined
+    ? todayStock.remainingStock
+    : Math.max(0, openingStock - totalEggsSold);
 
   // Profit Calculation: Profit = Total Sales - Cost of Eggs Sold
   // Purchase cost is taken from today's stock purchase price
@@ -238,26 +263,26 @@ export const OwnerDashboard: React.FC<Props> = ({
   const totalPendingAmount = pendingDeleteBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-100 text-slate-800">
-      {/* Top Header */}
-      <header className="bg-blue-800 text-white px-3.5 py-3 shadow-md shrink-0">
+    <div className="flex-1 flex flex-col bg-slate-100 text-slate-800 select-none">
+      {/* Top Header - Compact */}
+      <header className="bg-blue-800 text-white px-3 py-2 shadow-xs shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div>
-              <h1 className="font-black text-sm md:text-base tracking-tight uppercase leading-tight">
+              <h1 className="font-black text-sm tracking-tight uppercase leading-tight">
                 {isTamil && settings.agencyName === 'SSS EGG AGENCY'
                   ? t('agencyNameDefault')
                   : settings.agencyName || t('agencyNameDefault')}
               </h1>
-              <div className="flex items-center gap-2 text-xs text-blue-200 font-bold mt-0.5">
+              <div className="flex items-center gap-2 text-[10px] text-blue-200 font-bold mt-0.5">
                 <span className="flex items-center gap-1 font-black">
                   {isOnline ? (
                     <span className="text-emerald-300 flex items-center gap-1">
-                      <Wifi className="w-3.5 h-3.5" /> {t('online')}
+                      <Wifi className="w-3 h-3" /> {t('online')}
                     </span>
                   ) : (
                     <span className="text-amber-300 flex items-center gap-1 font-black">
-                      <WifiOff className="w-3.5 h-3.5" /> {t('offline')}
+                      <WifiOff className="w-3 h-3" /> {t('offline')}
                     </span>
                   )}
                 </span>
@@ -273,12 +298,12 @@ export const OwnerDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowNotificationsDrawer(!showNotificationsDrawer)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white relative transition-colors"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white relative transition-colors cursor-pointer"
               title="Notifications"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-3.5 h-3.5" />
               {unreadNotifsCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-bounce shadow-xs">
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-black w-3.5 h-3.5 rounded-full flex items-center justify-center animate-bounce shadow-2xs">
                   {unreadNotifsCount}
                 </span>
               )}
@@ -288,20 +313,20 @@ export const OwnerDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowSettingsModal(true)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
               title={t('settings')}
             >
-              <Settings className="w-4 h-4" />
+              <Settings className="w-3.5 h-3.5" />
             </button>
 
             {/* Logout */}
             <button
               type="button"
               onClick={() => setShowLogoutModal(true)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-rose-600/80 text-white transition-colors cursor-pointer"
               title={t('logout')}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -318,32 +343,32 @@ export const OwnerDashboard: React.FC<Props> = ({
               const matched = bills.find((b) => b.billId === activeBannerNotif.billId);
               if (matched) setActiveReceiptBill(matched);
             }}
-            className={`mt-3 p-3 rounded-2xl shadow-lg flex items-center justify-between cursor-pointer animate-in slide-in-from-top-3 border-2 ${
+            className={`mt-2 p-2 rounded-xl shadow-md flex items-center justify-between cursor-pointer animate-in slide-in-from-top-2 border ${
               activeBannerNotif.type === 'delete_request'
                 ? 'bg-rose-500 text-white border-rose-300'
                 : 'bg-amber-400 text-amber-950 border-amber-300'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <span className="text-lg animate-pulse">
+            <div className="flex items-center gap-2">
+              <span className="text-base animate-pulse">
                 {activeBannerNotif.type === 'delete_request' ? '⚠️' : '🔔'}
               </span>
               <div>
-                <div className="text-sm font-black uppercase tracking-tight">
+                <div className="text-xs font-black uppercase tracking-tight">
                   {activeBannerNotif.type === 'delete_request'
                     ? (isTamil
                         ? `நீக்குதல் கோரிக்கை: பில் #${activeBannerNotif.billNumber}`
                         : `Delete Request: Bill #${activeBannerNotif.billNumber}`)
                     : `New Bill Created #${activeBannerNotif.billNumber}`}
                 </div>
-                <div className="text-xs md:text-sm font-bold opacity-95">
+                <div className="text-[11px] font-bold opacity-95">
                   {activeBannerNotif.type === 'delete_request'
                     ? `${t('staff')}: ${activeBannerNotif.employeeName} • ${activeBannerNotif.reason || 'Staff requested deletion'}`
                     : `${activeBannerNotif.eggQuantity} Eggs • ${formatIndianCurrency(activeBannerNotif.totalAmount)} • Staff: ${activeBannerNotif.employeeName}`}
                 </div>
               </div>
             </div>
-            <span className="text-xs font-black bg-black/20 px-3 py-1 rounded-xl">
+            <span className="text-[10px] font-black bg-black/20 px-2 py-0.5 rounded-lg">
               {activeBannerNotif.type === 'delete_request' ? (isTamil ? 'மதிப்பாய்வு' : 'Review') : 'View'}
             </span>
           </div>
@@ -352,27 +377,27 @@ export const OwnerDashboard: React.FC<Props> = ({
 
       {/* Action Feedback Banner */}
       {actionFeedback && (
-        <div className="bg-emerald-600 text-white px-4 py-2 text-xs md:text-sm font-black flex items-center justify-between shadow-xs animate-fadeIn">
+        <div className="bg-emerald-600 text-white px-3 py-1.5 text-xs font-black flex items-center justify-between shadow-2xs animate-fadeIn">
           <span>{actionFeedback}</span>
           <button
             onClick={() => setActionFeedback(null)}
-            className="text-white/80 hover:text-white font-bold ml-2 text-base"
+            className="text-white/80 hover:text-white font-bold ml-2 text-sm cursor-pointer"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Quick Action Navigation Bar */}
-      <nav aria-label="Owner Actions" className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0 shadow-xs">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+      {/* Quick Action Navigation Bar - Compact */}
+      <nav aria-label="Owner Actions" className="bg-white border-b border-slate-200 px-3 py-1.5 flex items-center justify-between shrink-0 shadow-2xs">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
           <button
             type="button"
             onClick={() => setActiveTab('overview')}
-            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all ${
+            className={`py-1.5 px-2.5 rounded-lg font-black text-xs whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'overview'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 font-bold'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-700 hover:bg-slate-100 font-bold'
             }`}
           >
             {t('overview')}
@@ -380,10 +405,10 @@ export const OwnerDashboard: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setActiveTab('bills')}
-            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-1.5 ${
+            className={`py-1.5 px-2.5 rounded-lg font-black text-xs whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
               activeTab === 'bills'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 font-bold'
+                ? 'bg-blue-600 text-white shadow-2xs'
+                : 'text-slate-700 hover:bg-slate-100 font-bold'
             }`}
           >
             <span>{t('allBills')} ({bills.length})</span>
@@ -391,26 +416,26 @@ export const OwnerDashboard: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setActiveTab('delete_requests')}
-            className={`py-2 px-3 sm:px-4 rounded-xl font-black text-xs sm:text-sm md:text-base whitespace-nowrap transition-all flex items-center gap-1.5 relative ${
+            className={`py-1.5 px-2.5 rounded-lg font-black text-xs whitespace-nowrap transition-all flex items-center gap-1 relative cursor-pointer ${
               activeTab === 'delete_requests'
-                ? 'bg-rose-600 text-white shadow-md ring-2 ring-rose-400'
+                ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-400'
                 : pendingDeleteBills.length > 0
-                ? 'bg-rose-100 text-rose-800 border-2 border-rose-400 font-black animate-pulse shadow-sm'
+                ? 'bg-rose-100 text-rose-800 border border-rose-400 font-black animate-pulse shadow-2xs'
                 : 'text-rose-700 hover:bg-rose-50 border border-rose-200 font-bold'
             }`}
           >
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1">
               <span>{t('deleteRequests')}</span>
               {pendingDeleteBills.length > 0 && (
-                <span className="relative flex h-2.5 w-2.5">
+                <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-600" />
                 </span>
               )}
             </span>
             {pendingDeleteBills.length > 0 && (
               <span
-                className={`text-xs px-2 py-0.5 rounded-full font-black animate-bounce shadow-sm ${
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-black animate-bounce shadow-2xs ${
                   activeTab === 'delete_requests' ? 'bg-white text-rose-700' : 'bg-rose-600 text-white'
                 }`}
               >
@@ -427,7 +452,7 @@ export const OwnerDashboard: React.FC<Props> = ({
             type="date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent text-slate-800 font-bold text-[11px] focus:outline-hidden cursor-pointer w-[105px] sm:w-auto"
+            className="bg-transparent text-slate-800 font-bold text-[11px] focus:outline-hidden cursor-pointer w-[100px] sm:w-auto"
           />
         </div>
       </nav>
@@ -492,134 +517,162 @@ export const OwnerDashboard: React.FC<Props> = ({
 
       {/* MAIN TAB CONTENT */}
       {activeTab === 'overview' && (
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
-          {/* Quick Management Shortcuts Row */}
-          <div className="grid grid-cols-2 gap-3">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-2.5 sm:p-3 space-y-2.5">
+          {/* Quick Management Shortcuts Row - Compact */}
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setShowPriceModal(true)}
-              className="bg-white hover:bg-blue-50/60 p-4 rounded-3xl border-2 border-blue-200 shadow-xs flex items-center justify-center active:scale-98 transition-all text-center"
+              className="bg-white hover:bg-blue-50/60 p-2.5 rounded-xl border border-blue-200 shadow-2xs flex items-center justify-center active:scale-98 transition-all text-center cursor-pointer"
             >
-              <div className="text-sm md:text-base font-black text-slate-900">{t('setPrice')}</div>
+              <div className="text-xs sm:text-sm font-black text-slate-900">{t('setPrice')}</div>
             </button>
 
             <button
               type="button"
               onClick={() => setShowStockModal(true)}
-              className="bg-white hover:bg-emerald-50/60 p-4 rounded-3xl border-2 border-emerald-200 shadow-xs flex items-center justify-center active:scale-98 transition-all text-center"
+              className="bg-white hover:bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200 shadow-2xs flex items-center justify-center active:scale-98 transition-all text-center cursor-pointer"
             >
-              <div className="text-sm md:text-base font-black text-slate-900">{t('importStock')}</div>
+              <div className="text-xs sm:text-sm font-black text-slate-900">{t('importStock')}</div>
             </button>
           </div>
 
-          {/* LARGE SUMMARY CARDS REQUIRED BY SPECIFICATION */}
-          <div className="space-y-3">
-            {/* Card 1: TODAY'S SALES */}
-            <div className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-3xl p-5 md:p-6 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
+          {/* SUMMARY CARDS - Compact & Space Efficient */}
+          <div className="space-y-2">
+            {/* Card 1: TODAY'S SALES - Compact */}
+            <div className="bg-gradient-to-r from-blue-700 to-blue-800 rounded-xl p-3 sm:p-3.5 text-white shadow-md shadow-blue-500/15 relative overflow-hidden">
               <div className="relative z-10 flex items-center justify-between">
                 <div>
-                  <div className="text-xs md:text-sm font-black text-blue-200 uppercase tracking-wider flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-amber-300" />
+                  <div className="text-[11px] font-black text-blue-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-amber-300" />
                     <span>{t('todaySales')}</span>
                   </div>
-                  <div className="text-4xl md:text-5xl font-black mt-2 font-mono tracking-tight text-white drop-shadow-md">
+                  <div className="text-2xl sm:text-3xl font-black mt-1 font-mono tracking-tight text-white drop-shadow-xs">
                     {formatIndianCurrency(totalSales)}
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs md:text-sm bg-blue-900/80 px-3.5 py-1.5 rounded-full text-blue-100 font-black border border-blue-400/30">
+                  <span className="text-[11px] bg-blue-900/80 px-2.5 py-1 rounded-lg text-blue-100 font-black border border-blue-400/30">
                     1 {isTamil ? 'தாரா' : 'Tara'} = ₹{todayPrice?.pricePer30Eggs ?? 0}
                   </span>
                 </div>
               </div>
             </div>
 
-
-
-            {/* Grid 2 Columns: EGGS SOLD & REMAINING STOCK */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Card 2: EGGS SOLD */}
-              <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                  <span>{t('eggsSold')}</span>
-                </div>
-                <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
-                  {Math.floor(totalEggsSold / 30).toLocaleString('en-IN')}{' '}
-                  <span className="text-sm font-black text-blue-700">{isTamil ? 'தாரா' : 'Trays'}</span>
-                  {totalEggsSold % 30 > 0 && (
-                    <span className="text-xs font-bold text-slate-500 ml-1">
-                      (+{totalEggsSold % 30})
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Card 3: REMAINING STOCK */}
-              <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>{t('remainingStock')}</span>
+            {/* Grid 2 Columns: TOTAL STOCK & REMAINING STOCK - Compact */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Card 2A: TOTAL STOCK */}
+              <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                  <span>{isTamil ? 'மொத்த வரவு' : 'Total Stock'}</span>
                   {todayStock?.importHistory && todayStock.importHistory.length > 0 && (
-                    <span className="text-[10px] font-mono font-black text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-mono font-black text-blue-800 bg-blue-100 px-1.5 py-0.2 rounded-full">
                       {todayStock.importHistory.length} {isTamil ? 'வரவுகள்' : 'entries'}
                     </span>
                   )}
                 </div>
-                <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
+                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono mt-1">
+                  {Math.floor(openingStock / 30).toLocaleString('en-IN')}{' '}
+                  <span className="text-xs font-black text-blue-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                  {openingStock % 30 > 0 && (
+                    <span className="text-[10px] font-bold text-slate-500 ml-1">
+                      (+{openingStock % 30})
+                    </span>
+                  )}
+                </div>
+                <div className="text-[10px] font-black text-slate-600 mt-0.5 font-mono">
+                  {openingStock.toLocaleString('en-IN')} {isTamil ? 'மொத்த முட்டை' : 'Total Eggs'}
+                </div>
+              </div>
+
+              {/* Card 2B: REMAINING STOCK */}
+              <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                  <span>{t('remainingStock')}</span>
+                  <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                    {isTamil ? 'கையிருப்பு' : 'In Hand'}
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono mt-1">
                   {Math.floor(remainingStock / 30).toLocaleString('en-IN')}{' '}
-                  <span className="text-sm font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                  <span className="text-xs font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
                   {remainingStock % 30 > 0 && (
-                    <span className="text-xs font-bold text-slate-500 ml-1">
+                    <span className="text-[10px] font-bold text-slate-500 ml-1">
                       (+{remainingStock % 30})
                     </span>
                   )}
                 </div>
+                {/* Under show the remaining egg */}
+                <div className="text-[10px] font-black text-slate-600 mt-0.5 font-mono">
+                  {remainingStock.toLocaleString('en-IN')} {isTamil ? 'மீதமுள்ள முட்டை' : 'Remaining Eggs'}
+                </div>
               </div>
             </div>
 
-            {/* Grid 2 Columns: TOTAL BILLS & PROFIT */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Card 4: TOTAL BILLS */}
-              <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                  <span>{t('totalBills')}</span>
+            {/* Grid 3 Columns: EGGS SOLD, TOTAL BILLS, PROFIT - Compact */}
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+              {/* EGGS SOLD */}
+              <div className="bg-white rounded-xl p-2 border border-slate-200 shadow-2xs">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">
+                  {t('eggsSold')}
                 </div>
-                <div className="text-3xl md:text-4xl font-black text-slate-900 font-mono mt-1.5">
-                  {totalBillsCount}
+                <div className="text-base sm:text-lg font-black text-slate-900 font-mono mt-0.5 leading-tight">
+                  {Math.floor(totalEggsSold / 30)}{' '}
+                  <span className="text-[10px] font-bold text-blue-700">{isTamil ? 'தாரா' : 'T'}</span>
+                </div>
+                <div className="text-[9px] font-bold text-slate-400 font-mono mt-0.5">
+                  {totalEggsSold} {t('eggs')}
                 </div>
               </div>
 
-              {/* Card 5: TODAY'S PROFIT */}
-              <div className="bg-emerald-50 rounded-3xl p-4 md:p-5 border-2 border-emerald-200 shadow-xs">
-                <div className="text-xs font-black text-emerald-800 uppercase tracking-wider">
-                  <span>{t('profit')}</span>
+              {/* TOTAL BILLS */}
+              <div className="bg-white rounded-xl p-2 border border-slate-200 shadow-2xs">
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">
+                  {t('totalBills')}
                 </div>
-                <div className="text-3xl md:text-4xl font-black text-emerald-950 font-mono mt-1.5">
+                <div className="text-base sm:text-lg font-black text-slate-900 font-mono mt-0.5 leading-tight">
+                  {totalBillsCount}
+                </div>
+                <div className="text-[9px] font-bold text-slate-400 mt-0.5">
+                  {isTamil ? 'ரசீதுகள்' : 'Bills'}
+                </div>
+              </div>
+
+              {/* TODAY'S PROFIT */}
+              <div className="bg-emerald-50 rounded-xl p-2 border border-emerald-200 shadow-2xs">
+                <div className="text-[10px] font-black text-emerald-800 uppercase tracking-wider truncate">
+                  {t('profit')}
+                </div>
+                <div className="text-base sm:text-lg font-black text-emerald-950 font-mono mt-0.5 leading-tight truncate">
                   {formatIndianCurrency(totalProfit)}
+                </div>
+                <div className="text-[9px] font-bold text-emerald-700 mt-0.5">
+                  {isTamil ? 'இன்றைய லாபம்' : 'Profit'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Employee-wise Sales Card (Only ONE employee) */}
-          <div className="bg-white rounded-3xl p-4 md:p-5 border-2 border-slate-200 shadow-xs space-y-3">
+          {/* Employee-wise Sales Card - Compact */}
+          <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-black text-slate-800 uppercase flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
+              <div className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
+                <User className="w-4 h-4 text-blue-600" />
                 <span>{t('staff')} {t('overview')}</span>
               </div>
             </div>
 
-            <div className="p-4 bg-blue-50/80 border-2 border-blue-100 rounded-2xl flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="text-xs md:text-sm font-bold text-slate-600">
+            <div className="p-2 sm:p-2.5 bg-blue-50/80 border border-blue-100 rounded-lg flex items-center justify-between">
+              <div className="space-y-0.5">
+                <div className="text-xs font-bold text-slate-700">
                   {totalBillsCount} {t('totalBills')} • {totalEggsSold} {t('eggsSold')}
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-xs font-black text-slate-500 uppercase tracking-wider">{t('total')}</div>
-                <div className="text-xl md:text-2xl font-black text-blue-800 font-mono">
+                <div className="text-[9px] font-black text-slate-500 uppercase tracking-wider">{t('total')}</div>
+                <div className="text-base sm:text-lg font-black text-blue-800 font-mono">
                   {formatIndianCurrency(totalSales)}
                 </div>
               </div>
@@ -628,75 +681,85 @@ export const OwnerDashboard: React.FC<Props> = ({
         </div>
       )}
 
-      {/* ALL BILLS TAB */}
+      {/* ALL BILLS TAB - Compact */}
       {activeTab === 'bills' && (
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
-          {/* Search bar */}
+        <div className="flex-1 overflow-y-auto no-scrollbar p-2.5 sm:p-3 space-y-2">
+          {/* Search bar - Compact */}
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder={t('searchBillsPlaceholder')}
               value={billSearch}
               onChange={(e) => setBillSearch(e.target.value)}
-              className="w-full bg-white border-2 border-slate-300 rounded-2xl pl-11 pr-4 py-3 text-sm md:text-base font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {filteredBills.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 text-center border-2 border-slate-200 text-slate-500">
-                <p className="text-sm md:text-base font-black">{t('noBillsFound')}</p>
+              <div className="bg-white rounded-xl p-5 text-center border border-slate-200 text-slate-500">
+                <p className="text-xs sm:text-sm font-black">{t('noBillsFound')}</p>
               </div>
             ) : (
               filteredBills.map((b) => (
                 <div
                   key={b.billId}
-                  className={`bg-white rounded-2xl p-4 border-2 shadow-xs transition-all space-y-3 ${
+                  className={`bg-white rounded-xl p-2 sm:p-2.5 border shadow-2xs transition-all space-y-2 ${
                     b.deleteRequest?.status === 'pending'
-                      ? 'border-rose-400 bg-rose-50/30 ring-2 ring-rose-200'
+                      ? 'border-rose-400 bg-rose-50/30 ring-1 ring-rose-200'
                       : 'border-slate-200 hover:border-blue-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-black text-sm md:text-base text-blue-900">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono font-black text-xs sm:text-sm text-blue-900">
                           {t('billNo')} #{b.billNumber}
                         </span>
 
                         {b.deleteRequest?.status === 'pending' && (
-                          <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-rose-600 text-white animate-pulse">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full font-black bg-rose-600 text-white animate-pulse">
                             ⚠️ {isTamil ? 'நீக்குதல் கோரிக்கை' : 'Delete Requested'}
                           </span>
                         )}
                       </div>
 
-                      <div className="text-sm font-bold text-slate-700">
+                      <div className="text-xs font-bold text-slate-700">
                         <span>{b.eggQuantity} {t('eggs')}</span>
                         <span className="text-slate-400"> • </span>
                         <span>₹{b.pricePerEgg}{t('perEgg')}</span>
                       </div>
-                      <div className="text-xs md:text-sm font-bold text-slate-500 flex items-center gap-1.5 flex-wrap">
-                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-mono text-xs">{b.time}</span>
+                      <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1 flex-wrap">
+                        <span className="bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded font-mono text-[10px]">{b.time}</span>
                         <span className="text-slate-300">•</span>
                         <span className="text-emerald-700 font-black">{t('profit')}: ₹{b.profit}</span>
                       </div>
                     </div>
 
-                    <div className="text-right space-y-2 shrink-0">
-                      <div className="font-black text-lg md:text-xl text-slate-900 font-mono">
+                    <div className="text-right space-y-1 shrink-0">
+                      <div className="font-black text-sm sm:text-base text-slate-900 font-mono">
                         ₹{Math.round(b.totalAmount).toLocaleString('en-IN')}
                       </div>
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => setActiveReceiptBill(b)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-black px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
                           title={t('receiptPreview')}
                         >
-                          <Eye className="w-4 h-4 shrink-0" />
+                          <Eye className="w-3 h-3 shrink-0" />
                           <span>{t('receiptPreview')}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setBillToCancel(b)}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                          title={isTamil ? 'பில் ரத்து' : 'Cancel Bill'}
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-600 shrink-0" />
+                          <span>{isTamil ? 'ரத்து' : 'Cancel'}</span>
                         </button>
                       </div>
                     </div>
@@ -748,15 +811,15 @@ export const OwnerDashboard: React.FC<Props> = ({
         <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 md:p-5 space-y-4">
           {/* Header & Stats Banner */}
           <div className="bg-gradient-to-r from-rose-700 via-rose-800 to-rose-950 text-white rounded-3xl p-4 md:p-5 shadow-md space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-6 h-6 text-amber-300" />
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-amber-300" />
               </div>
               <div>
-                <h2 className="text-base md:text-lg font-black uppercase tracking-tight">
+                <h2 className="text-sm font-black uppercase tracking-tight">
                   {t('reviewDeleteRequestsTitle')}
                 </h2>
-                <p className="text-xs text-rose-200 font-bold">
+                <p className="text-[10px] text-rose-200 font-bold">
                   {isTamil
                     ? 'பணியாளர்கள் அனுப்பிய நீக்குதல் கோரிக்கைகளை ஆய்வு செய்து அங்கீகரிக்கவும்'
                     : 'Review and approve or reject deletion requests submitted by employees'}
@@ -764,48 +827,48 @@ export const OwnerDashboard: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-3 gap-2 pt-1">
-              <div className="bg-white/10 rounded-2xl p-2.5 backdrop-blur-xs border border-white/15">
-                <div className="text-[10px] md:text-xs font-bold text-rose-200 uppercase">
+            {/* Quick Metrics - Compact */}
+            <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+              <div className="bg-white/10 rounded-xl p-1.5 backdrop-blur-xs border border-white/15">
+                <div className="text-[9px] font-bold text-rose-200 uppercase">
                   {isTamil ? 'நிலுவை' : 'Pending'}
                 </div>
-                <div className="text-lg md:text-xl font-black font-mono">
+                <div className="text-base font-black font-mono">
                   {pendingDeleteBills.length}
                 </div>
               </div>
-              <div className="bg-white/10 rounded-2xl p-2.5 backdrop-blur-xs border border-white/15">
-                <div className="text-[10px] md:text-xs font-bold text-rose-200 uppercase">
+              <div className="bg-white/10 rounded-xl p-1.5 backdrop-blur-xs border border-white/15">
+                <div className="text-[9px] font-bold text-rose-200 uppercase">
                   {isTamil ? 'மீளப்பெறும் முட்டை' : 'Eggs to Return'}
                 </div>
-                <div className="text-lg md:text-xl font-black font-mono">
+                <div className="text-base font-black font-mono">
                   +{totalPendingEggs}
                 </div>
               </div>
-              <div className="bg-white/10 rounded-2xl p-2.5 backdrop-blur-xs border border-white/15">
-                <div className="text-[10px] md:text-xs font-bold text-rose-200 uppercase">
+              <div className="bg-white/10 rounded-xl p-1.5 backdrop-blur-xs border border-white/15">
+                <div className="text-[9px] font-bold text-rose-200 uppercase">
                   {isTamil ? 'மொத்த மதிப்பு' : 'Total Value'}
                 </div>
-                <div className="text-lg md:text-xl font-black font-mono">
+                <div className="text-base font-black font-mono">
                   ₹{Math.round(totalPendingAmount).toLocaleString('en-IN')}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Pending Delete Requests Cards */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-500 px-1">
+          {/* Pending Delete Requests Cards - Compact */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-500 px-0.5">
               <span>{t('pendingRequests')} ({pendingDeleteBills.length})</span>
             </div>
 
             {pendingDeleteBills.length === 0 ? (
-              <div className="bg-white rounded-3xl p-8 text-center border-2 border-slate-200 text-slate-500 space-y-2 shadow-xs">
-                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-xs">
-                  <ShieldCheck className="w-7 h-7" />
+              <div className="bg-white rounded-xl p-5 text-center border border-slate-200 text-slate-500 space-y-1.5 shadow-2xs">
+                <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-2xs">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
-                <p className="text-base font-black text-slate-800">{t('noPendingDeleteRequests')}</p>
-                <p className="text-xs font-bold text-slate-500 max-w-sm mx-auto">
+                <p className="text-xs sm:text-sm font-black text-slate-800">{t('noPendingDeleteRequests')}</p>
+                <p className="text-[10px] font-bold text-slate-500 max-w-sm mx-auto">
                   {t('allClearDesc')}
                 </p>
               </div>
@@ -813,20 +876,20 @@ export const OwnerDashboard: React.FC<Props> = ({
               pendingDeleteBills.map((b) => (
                 <div
                   key={b.billId}
-                  className="bg-white rounded-2xl p-4 border-2 border-rose-300 shadow-md space-y-3 ring-2 ring-rose-100"
+                  className="bg-white rounded-xl p-2.5 sm:p-3 border border-rose-300 shadow-xs space-y-2 ring-1 ring-rose-100"
                 >
                   {/* Top Bar with Bill # and Employee */}
-                  <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2.5">
+                  <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-1.5">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-base md:text-lg text-blue-900">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-black text-xs sm:text-sm text-blue-900">
                           {t('billNo')} #{b.billNumber}
                         </span>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-black bg-rose-600 text-white animate-pulse">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-black bg-rose-600 text-white animate-pulse">
                           ⚠️ {isTamil ? 'அனுமதி கோரப்பட்டுள்ளது' : 'Pending Approval'}
                         </span>
                       </div>
-                      <div className="text-xs font-bold text-slate-500 mt-1">
+                      <div className="text-[10px] font-bold text-slate-500 mt-0.5">
                         {b.time} ({b.date}) • {t('requestedBy')}:{' '}
                         <span className="text-slate-900 font-black">
                           {b.deleteRequest?.requestedBy || b.employeeName}
@@ -835,10 +898,10 @@ export const OwnerDashboard: React.FC<Props> = ({
                     </div>
 
                     <div className="text-right">
-                      <div className="text-xl font-black text-slate-900 font-mono">
+                      <div className="text-base font-black text-slate-900 font-mono">
                         ₹{b.totalAmount}
                       </div>
-                      <div className="text-[11px] font-bold text-slate-500">
+                      <div className="text-[10px] font-bold text-slate-500">
                         {b.eggQuantity} {t('eggs')} @ ₹{b.pricePerEgg}
                       </div>
                     </div>
@@ -930,6 +993,7 @@ export const OwnerDashboard: React.FC<Props> = ({
       {showStockModal && (
         <StockImportModal
           currentStock={todayStock}
+          selectedDate={selectedDate}
           onStockUpdated={(s) => setTodayStock(s)}
           onClose={() => setShowStockModal(false)}
         />
@@ -952,6 +1016,62 @@ export const OwnerDashboard: React.FC<Props> = ({
           hidePrintButton={true}
           onClose={() => setActiveReceiptBill(null)}
         />
+      )}
+
+      {/* Bill Cancellation Confirmation Modal for Owner */}
+      {billToCancel && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 animate-in fade-in select-none">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-rose-700 text-white p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-200" />
+                <h3 className="font-black text-sm">
+                  {isTamil ? `பில் #${billToCancel.billNumber} ரத்து செய்தல்` : `Cancel Bill #${billToCancel.billNumber}`}
+                </h3>
+              </div>
+              <button
+                onClick={() => setBillToCancel(null)}
+                className="text-rose-100 hover:text-white p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3.5 space-y-3">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-xs space-y-1 text-rose-950">
+                <div className="font-black text-rose-800">
+                  {isTamil ? 'கையிருப்பு மீட்டமைப்பு:' : 'Inventory Stock Restoration:'}
+                </div>
+                <p className="font-bold">
+                  {isTamil
+                    ? `இந்த பில்லை ரத்து செய்தால் ${billToCancel.eggQuantity} முட்டைகள் (${Math.floor(billToCancel.eggQuantity / 30)} தாரா) மீண்டும் இன்றைய கையிருப்பில் சேர்க்கப்படும்.`
+                    : `Cancelling this bill will return ${billToCancel.eggQuantity} eggs (${Math.floor(billToCancel.eggQuantity / 30)} Trays) back into today's inventory stock.`}
+                </p>
+                <div className="font-mono text-slate-700 pt-1 text-[11px]">
+                  {formatIndianCurrency(billToCancel.totalAmount)} • {billToCancel.time} • {t('staff')}: {billToCancel.employeeName}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setBillToCancel(null)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2 rounded-xl transition-all cursor-pointer"
+                >
+                  {isTamil ? 'வேண்டாம்' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmCancelBill}
+                  className="bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-black text-xs py-2 rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isTamil ? 'உறுதி செய்' : 'Confirm & Restore'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showLogoutModal && (

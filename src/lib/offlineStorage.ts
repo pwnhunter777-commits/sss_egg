@@ -165,9 +165,30 @@ export function getLocalDailyPrice(date: string): DailyPrice | null {
   }
 }
 
+// Shared persistent BroadcastChannel for robust real-time cross-tab sync
+let sharedStockChannel: BroadcastChannel | null = null;
+export function getSharedStockChannel(): BroadcastChannel | null {
+  if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return null;
+  if (!sharedStockChannel) {
+    try {
+      sharedStockChannel = new BroadcastChannel('sss_sync_channel');
+    } catch {}
+  }
+  return sharedStockChannel;
+}
+
 export function setLocalDailyPrice(price: DailyPrice): void {
   try {
     localStorage.setItem(`sss_price_${price.date}`, JSON.stringify(price));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sss_price_changed', { detail: price }));
+      try {
+        const bc = getSharedStockChannel();
+        if (bc) {
+          bc.postMessage({ type: 'PRICE_UPDATED', price });
+        }
+      } catch {}
+    }
   } catch (e) {
     console.error('Failed to store daily price', e);
   }
@@ -187,6 +208,15 @@ export function getLocalDailyStock(date: string): DailyStock | null {
 export function setLocalDailyStock(stock: DailyStock): void {
   try {
     localStorage.setItem(`sss_stock_${stock.date}`, JSON.stringify(stock));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sss_stock_changed', { detail: stock }));
+      try {
+        const bc = getSharedStockChannel();
+        if (bc) {
+          bc.postMessage({ type: 'STOCK_UPDATED', stock });
+        }
+      } catch {}
+    }
   } catch (e) {
     console.error('Failed to store daily stock', e);
   }
@@ -363,32 +393,52 @@ export function setLastActiveDate(date: string): void {
 }
 
 /**
+ * Calculates day difference between reference date and target date.
+ * Returns true if targetDate is strictly older than maxDays (e.g. 3 days).
+ */
+export function isOlderThanDays(targetDateStr: string, maxDays: number = 3, refDateStr: string = getTodayDateString()): boolean {
+  try {
+    const target = new Date(targetDateStr + 'T00:00:00Z').getTime();
+    const ref = new Date(refDateStr + 'T00:00:00Z').getTime();
+    if (isNaN(target) || isNaN(ref)) return false;
+    const diffDays = Math.floor((ref - target) / (1000 * 60 * 60 * 24));
+    return diffDays >= maxDays;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Cleans up past days' operational data from local phone memory.
- * Retains only today's records so the phone operates fast, light, and with clean daily numbers.
+ * Retains records within the last 3 days (today, yesterday, day before yesterday)
+ * and purges anything older than 3 days.
  */
 export function purgeOldDaysLocalData(currentDate: string = getTodayDateString()): void {
   try {
-    // 1. Filter out bills from past days
+    // 1. Retain bills within the last 3 days
     const allBills = getLocalBills();
-    const todayBills = allBills.filter((b) => b.date === currentDate);
-    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(todayBills));
+    const retainedBills = allBills.filter((b) => !isOlderThanDays(b.date, 3, currentDate));
+    localStorage.setItem(STORAGE_KEYS.BILLS, JSON.stringify(retainedBills));
 
-    // 2. Filter out notifications from past days
+    // 2. Retain notifications within the last 3 days
     const allNotifs = getLocalNotifications();
-    const todayNotifs = allNotifs.filter((n) => n.date === currentDate);
-    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(todayNotifs));
+    const retainedNotifs = allNotifs.filter((n) => !isOlderThanDays(n.date, 3, currentDate));
+    localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(retainedNotifs));
 
-    // 3. Clean up old date keys (price, stock, bill numbers)
+    // 3. Clean up old date keys (price, stock, bill numbers) older than 3 days
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key) {
-        if (
-          (key.startsWith('sss_price_') && !key.endsWith(currentDate)) ||
-          (key.startsWith('sss_stock_') && !key.endsWith(currentDate)) ||
-          (key.startsWith('sss_last_bill_number_') && !key.endsWith(currentDate))
-        ) {
-          keysToRemove.push(key);
+        let keyDate = '';
+        if (key.startsWith('sss_price_')) keyDate = key.replace('sss_price_', '');
+        else if (key.startsWith('sss_stock_')) keyDate = key.replace('sss_stock_', '');
+        else if (key.startsWith('sss_last_bill_number_')) keyDate = key.replace('sss_last_bill_number_', '');
+
+        if (keyDate && /^\d{4}-\d{2}-\d{2}$/.test(keyDate)) {
+          if (isOlderThanDays(keyDate, 3, currentDate)) {
+            keysToRemove.push(key);
+          }
         }
       }
     }

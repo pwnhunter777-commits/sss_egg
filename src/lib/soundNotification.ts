@@ -8,7 +8,7 @@ export function playChimeSound() {
     const ctx = new AudioContextClass();
 
     if (ctx.state === 'suspended') {
-      ctx.resume();
+      ctx.resume().catch(() => {});
     }
 
     const now = ctx.currentTime;
@@ -76,7 +76,7 @@ export function playDeleteAlertSound() {
     const ctx = new AudioContextClass();
 
     if (ctx.state === 'suspended') {
-      ctx.resume();
+      ctx.resume().catch(() => {});
     }
 
     const now = ctx.currentTime;

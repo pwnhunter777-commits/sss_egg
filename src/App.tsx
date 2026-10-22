@@ -47,8 +47,6 @@ export default function App() {
       setUserRole(null);
     } else {
       setLastActiveDate(today);
-      // Ensure daily clean state & mirror
-      EggAgencyService.restartDay(today).catch(() => {});
       // Check for existing valid 1-day session
       const activeSession = getLocalActiveSession();
       if (activeSession) {
@@ -62,6 +60,9 @@ export default function App() {
       })
       .catch(() => {})
       .finally(() => setIsInitializing(false));
+
+    // Automatically enforce 3-day retention policy: clear data older than 3 days
+    EggAgencyService.purgePastDaysData(today).catch(() => {});
 
     // Attempt background sync of any pending offline bills
     EggAgencyService.syncPendingBills().catch(() => {});

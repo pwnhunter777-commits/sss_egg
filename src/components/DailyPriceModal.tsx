@@ -93,14 +93,14 @@ export const DailyPriceModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in select-none">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
-        {/* Header */}
-        <div className="bg-blue-800 text-white px-5 py-4 flex items-center justify-between">
+      <div className="bg-white rounded-2xl max-w-sm w-full shadow-xl overflow-hidden border border-slate-200">
+        {/* Header - Compact */}
+        <div className="bg-blue-800 text-white px-3.5 py-2.5 flex items-center justify-between">
           <div>
-            <h3 className="font-black text-base md:text-lg">
+            <h3 className="font-black text-sm sm:text-base leading-tight">
               {isTamil ? '1 தாரா விலை நிர்ணயம்' : 'Set 1 Tara Price'}
             </h3>
-            <p className="text-xs text-blue-200 font-bold">
+            <p className="text-[11px] text-blue-200 font-bold">
               {isTamil
                 ? '30 முட்டைகள் (1 தாரா) விற்பனை விலை'
                 : '30 Eggs (1 Tara / Tray) Selling Price'}
@@ -109,16 +109,16 @@ export const DailyPriceModal: React.FC<Props> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-blue-700 text-blue-100 transition-colors"
+            className="p-1 rounded-full hover:bg-blue-700 text-blue-100 transition-colors cursor-pointer"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSave} className="p-5 space-y-4">
-          {/* 1 Tara (30 Eggs) Price - The ONLY requested price */}
-          <div className="space-y-2">
-            <label className="text-sm font-black text-slate-900 block">
+        <form onSubmit={handleSave} className="p-3 sm:p-4 space-y-3">
+          {/* 1 Tara (30 Eggs) Price - Compact */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-black text-slate-900 block">
               <span>
                 {isTamil
                   ? '1 தாரா (30 முட்டைகள்) விலை (₹)'
@@ -126,11 +126,11 @@ export const DailyPriceModal: React.FC<Props> = ({
               </span>
             </label>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => handlePriceStep(-5)}
-                className="w-12 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-sm transition-all"
+                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-xs transition-all cursor-pointer"
                 title="-5"
               >
                 -5
@@ -138,14 +138,14 @@ export const DailyPriceModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handlePriceStep(-1)}
-                className="w-10 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-xs transition-all"
+                className="w-8 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-[11px] transition-all cursor-pointer"
                 title="-1"
               >
                 -1
               </button>
 
               <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-2xl">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">
                   ₹
                 </span>
                 <input
@@ -158,7 +158,7 @@ export const DailyPriceModal: React.FC<Props> = ({
                     setErrorMsg(null);
                   }}
                   placeholder="0"
-                  className="w-full bg-slate-50 border-2 border-blue-400 focus:border-blue-600 rounded-2xl pl-9 pr-3 py-3 text-3xl font-black text-slate-900 text-center font-mono focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full bg-slate-50 border-2 border-blue-400 focus:border-blue-600 rounded-xl pl-7 pr-2 py-1.5 text-2xl font-black text-slate-900 text-center font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                   autoFocus
                 />
               </div>
@@ -166,7 +166,7 @@ export const DailyPriceModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handlePriceStep(1)}
-                className="w-10 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-xs transition-all"
+                className="w-8 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-[11px] transition-all cursor-pointer"
                 title="+1"
               >
                 +1
@@ -174,23 +174,23 @@ export const DailyPriceModal: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handlePriceStep(5)}
-                className="w-12 h-14 rounded-2xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-sm transition-all"
+                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-800 font-black text-xs transition-all cursor-pointer"
                 title="+5"
               >
                 +5
               </button>
             </div>
 
-            {/* Quick preset chips */}
-            <div className="flex items-center justify-between gap-1.5 pt-1">
+            {/* Quick preset chips - Compact */}
+            <div className="flex items-center justify-between gap-1 pt-0.5">
               {[135, 150, 165, 180, 195].map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => handleQuickPreset(preset)}
-                  className={`flex-1 py-1.5 rounded-xl font-mono text-xs font-black transition-all ${
+                  className={`flex-1 py-1 rounded-lg font-mono text-[11px] font-black transition-all cursor-pointer ${
                     numPricePer30Eggs === preset
-                      ? 'bg-blue-600 text-white shadow-xs'
+                      ? 'bg-blue-600 text-white shadow-2xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                   }`}
                 >
@@ -199,42 +199,42 @@ export const DailyPriceModal: React.FC<Props> = ({
               ))}
             </div>
 
-            {/* Auto-calculated single egg rate information (Derived automatically, never asked) */}
-            <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-3 flex items-center justify-between text-xs mt-2">
-              <div className="flex items-center gap-1.5 font-bold text-blue-900">
-                <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+            {/* Auto-calculated single egg rate information - Compact */}
+            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2 flex items-center justify-between text-xs mt-1">
+              <div className="flex items-center gap-1 font-bold text-blue-900 text-[11px]">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span>
                   {isTamil
-                    ? '1 முட்டை விலை (தானாக கணக்கிடப்பட்டது):'
-                    : '1 Egg Equivalent (Auto-calculated):'}
+                    ? '1 முட்டை விலை (தானாக):'
+                    : '1 Egg Equivalent (Auto):'}
                 </span>
               </div>
-              <div className="font-black text-blue-900 text-sm font-mono">
+              <div className="font-black text-blue-900 text-xs font-mono">
                 ₹{autoCalculatedEggPrice}
               </div>
             </div>
           </div>
 
           {successMsg && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-2xl text-sm font-bold flex items-center gap-2 animate-in fade-in">
-              <Check className="w-5 h-5 text-emerald-600 shrink-0" />
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
 
           {errorMsg && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-2xl text-sm font-bold flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
             </div>
           )}
 
-          {/* Save Button */}
-          <div className="pt-2">
+          {/* Save Button - Compact */}
+          <div className="pt-0.5">
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black text-base py-3.5 px-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 active:scale-[0.98]"
+              className="w-full bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white font-black text-sm py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 active:scale-[0.98] cursor-pointer"
             >
               <span>{isSaving ? t('loading') : t('saveAndLockPrice')}</span>
             </button>

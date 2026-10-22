@@ -35,6 +35,8 @@ import {
   addLocalNotification,
   purgeOldDaysLocalData,
   clearAllTodayLocalData,
+  isOlderThanDays,
+  getSharedStockChannel,
 } from '../lib/offlineStorage';
 
 export const EggAgencyService = {
@@ -107,14 +109,6 @@ export const EggAgencyService = {
   async getTodayStock(date: string = getTodayDateString()): Promise<DailyStock> {
     const local = getLocalDailyStock(date);
     if (local) {
-      // Auto-correct 4000 (which was 3000 default + 1000 entered) to the intended 1000
-      if (local.remainingStock === 4000 && local.eggsSold === 0) {
-        local.openingStock = 1000;
-        local.importedStock = 1000;
-        local.remainingStock = 1000;
-        setLocalDailyStock(local);
-        this.saveTodayStock(local).catch(() => {});
-      }
       this.fetchRemoteStock(date).catch(() => {});
       return local;
     }
@@ -124,12 +118,6 @@ export const EggAgencyService = {
       const snapshot = await getDoc(docRef);
       if (snapshot.exists()) {
         const data = snapshot.data() as DailyStock;
-        if (data.remainingStock === 4000 && data.eggsSold === 0) {
-          data.openingStock = 1000;
-          data.importedStock = 1000;
-          data.remainingStock = 1000;
-          this.saveTodayStock(data).catch(() => {});
-        }
         setLocalDailyStock(data);
         return data;
       }
@@ -156,9 +144,21 @@ export const EggAgencyService = {
       const docRef = doc(db, 'daily_stock', date);
       const snapshot = await getDoc(docRef);
       if (snapshot.exists()) {
-        const data = snapshot.data() as DailyStock;
-        setLocalDailyStock(data);
-        return data;
+        const remoteData = snapshot.data() as DailyStock;
+        const local = getLocalDailyStock(date);
+        
+        // Prevent stale remote reads from wiping out fresher local additions
+        const localTime = local?.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+        const remoteTime = remoteData.updatedAt ? new Date(remoteData.updatedAt).getTime() : 0;
+
+        if (!local || remoteTime >= localTime || (remoteData.remainingStock || 0) >= (local.remainingStock || 0)) {
+          setLocalDailyStock(remoteData);
+          return remoteData;
+        } else {
+          // Local is fresher, re-sync local to remote
+          setDoc(docRef, local, { merge: true }).catch(() => {});
+          return local;
+        }
       }
     } catch (err) {
       // silent
@@ -181,41 +181,86 @@ export const EggAgencyService = {
 
   /**
    * Adds stock cumulatively to today's inventory.
-   * If mode === 'add': adds incoming trays to existing stock (e.g. 10 + 4 = 14 trays).
-   * If mode === 'set': overrides total stock count.
+   * If mode === 'add': adds incoming trays to existing stock (e.g. 10 + 10 = 20 trays).
    * Records an audit entry in importHistory so the owner can review all deliveries.
    */
   async addStockToToday(params: {
     date?: string;
     trays: number;
+    baseStock?: DailyStock | null;
     purchaseCostPer30?: number;
     mode?: 'add' | 'set';
     note?: string;
   }): Promise<DailyStock> {
     const date = params.date || getTodayDateString();
-    const currentStock = await this.getTodayStock(date);
-    const mode = params.mode || 'add';
+
+    const localStock = getLocalDailyStock(date);
+    let remoteStock: DailyStock | null = null;
+    try {
+      const snap = await getDoc(doc(db, 'daily_stock', date));
+      if (snap.exists()) {
+        remoteStock = snap.data() as DailyStock;
+      }
+    } catch {
+      // offline fallback
+    }
+
+    // Determine current baseline stock:
+    // Gather all candidate stocks for this date
+    const candidates = [params.baseStock, localStock, remoteStock].filter(
+      (s): s is DailyStock => Boolean(s && s.date === date)
+    );
+
+    let currentStock: DailyStock = {
+      date,
+      openingStock: 0,
+      importedStock: 0,
+      eggsSold: 0,
+      remainingStock: 0,
+      purchaseCost: 0,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (candidates.length > 0) {
+      // Pick the candidate with newest timestamp
+      candidates.sort((a, b) => {
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return timeB - timeA;
+      });
+      currentStock = { ...candidates[0] };
+
+      // Ensure we don't accidentally drop the highest available remaining stock or opening stock
+      for (const c of candidates) {
+        if ((c.remainingStock || 0) > (currentStock.remainingStock || 0)) {
+          currentStock.remainingStock = c.remainingStock;
+        }
+        if ((c.openingStock || 0) > (currentStock.openingStock || 0)) {
+          currentStock.openingStock = c.openingStock;
+        }
+      }
+    }
+
     const trays = Math.max(0, params.trays);
     const eggsFromInput = Math.round(trays * 30);
 
-    const prevRemaining = currentStock.remainingStock;
-    const prevEggsSold = currentStock.eggsSold;
+    // Resolve previous metrics accurately:
+    // If remainingStock is 0 but openingStock was present, respect openingStock
+    const prevRemaining = Math.max(
+      0,
+      currentStock.remainingStock !== undefined && currentStock.remainingStock !== null
+        ? currentStock.remainingStock
+        : (currentStock.openingStock || 0)
+    );
+    const prevOpening = Math.max(0, currentStock.openingStock ?? prevRemaining);
+    const prevImported = Math.max(0, currentStock.importedStock ?? prevOpening);
+    const prevEggsSold = Math.max(0, currentStock.eggsSold || 0);
     const prevImportHistory = currentStock.importHistory || [];
 
-    let newOpeningStock = 0;
-    let newImportedStock = 0;
-    let newRemainingStock = 0;
-
-    if (mode === 'add') {
-      newOpeningStock = currentStock.openingStock + eggsFromInput;
-      newImportedStock = currentStock.importedStock + eggsFromInput;
-      newRemainingStock = prevRemaining + eggsFromInput;
-    } else {
-      // Set mode: sets the total stock count
-      newOpeningStock = eggsFromInput + prevEggsSold;
-      newImportedStock = eggsFromInput;
-      newRemainingStock = Math.max(0, eggsFromInput - prevEggsSold);
-    }
+    // Strictly cumulative addition: e.g. 10 trays (300 eggs) + 10 trays (300 eggs) = 20 trays (600 eggs)
+    const newRemainingStock = prevRemaining + eggsFromInput;
+    const newOpeningStock = prevOpening + eggsFromInput;
+    const newImportedStock = prevImported + eggsFromInput;
 
     const calculatedCostPerEgg =
       params.purchaseCostPer30 && params.purchaseCostPer30 > 0
@@ -228,7 +273,7 @@ export const EggAgencyService = {
       eggs: eggsFromInput,
       timestamp: new Date().toISOString(),
       timeStr: formatTime(new Date()),
-      mode,
+      mode: 'add',
       previousRemainingTrays: Math.floor(prevRemaining / 30),
       newRemainingTrays: Math.floor(newRemainingStock / 30),
       purchasePricePer30: params.purchaseCostPer30,
@@ -622,7 +667,11 @@ export const EggAgencyService = {
         q,
         (snapshot) => {
           const remoteBills: Bill[] = [];
-          snapshot.forEach((d) => remoteBills.push(d.data() as Bill));
+          snapshot.forEach((d) => {
+            const b = d.data() as Bill;
+            remoteBills.push(b);
+            saveLocalBill(b);
+          });
           
           // Merge local pending bills that might not have reached server yet
           const pending = getLocalPendingBills().filter((b) => b.date === date);
@@ -698,29 +747,17 @@ export const EggAgencyService = {
   subscribeToStock(date: string, onUpdate: (stock: DailyStock | null) => void): () => void {
     const local = getLocalDailyStock(date);
     if (local) {
-      if (local.remainingStock === 4000 && local.eggsSold === 0) {
-        local.openingStock = 1000;
-        local.importedStock = 1000;
-        local.remainingStock = 1000;
-        setLocalDailyStock(local);
-        this.saveTodayStock(local).catch(() => {});
-      }
       onUpdate(local);
     }
 
+    let unsubSnapshot = () => {};
     try {
       const docRef = doc(db, 'daily_stock', date);
-      const unsubscribe = onSnapshot(
+      unsubSnapshot = onSnapshot(
         docRef,
         (snap) => {
           if (snap.exists()) {
             const data = snap.data() as DailyStock;
-            if (data.remainingStock === 4000 && data.eggsSold === 0) {
-              data.openingStock = 1000;
-              data.importedStock = 1000;
-              data.remainingStock = 1000;
-              EggAgencyService.saveTodayStock(data).catch(() => {});
-            }
             setLocalDailyStock(data);
             onUpdate(data);
           }
@@ -729,19 +766,86 @@ export const EggAgencyService = {
           console.warn('Stock snapshot listener notice (offline fallback active):', error);
         }
       );
-      return unsubscribe;
     } catch {
-      return () => {};
+      // offline fallback
     }
+
+    // Multi-channel instant local sync across tabs/windows
+    const onCustomEvent = (e: any) => {
+      if (e.detail && e.detail.date === date) {
+        onUpdate(e.detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sss_stock_changed', onCustomEvent);
+    }
+
+    const onStorageEvent = (e: StorageEvent) => {
+      if (e.key === `sss_stock_${date}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          onUpdate(parsed);
+        } catch {}
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', onStorageEvent);
+    }
+
+    const sharedBc = getSharedStockChannel();
+    const bcHandler = (event: MessageEvent) => {
+      if (event.data?.type === 'STOCK_UPDATED' && event.data?.stock?.date === date) {
+        onUpdate(event.data.stock);
+      }
+    };
+    if (sharedBc) {
+      sharedBc.addEventListener('message', bcHandler);
+    }
+
+    // Active polling fallback every 2.5s to ensure remote changes sync even if WebSocket stalls
+    const pollInterval = setInterval(() => {
+      this.fetchRemoteStock(date).then((remote) => {
+        if (remote) {
+          onUpdate(remote);
+        }
+      }).catch(() => {});
+    }, 2500);
+
+    const onFocusOrVisible = () => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        this.fetchRemoteStock(date).then((remote) => {
+          if (remote) onUpdate(remote);
+        }).catch(() => {});
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocusOrVisible);
+      document.addEventListener('visibilitychange', onFocusOrVisible);
+    }
+
+    return () => {
+      unsubSnapshot();
+      clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sss_stock_changed', onCustomEvent);
+        window.removeEventListener('storage', onStorageEvent);
+        window.removeEventListener('focus', onFocusOrVisible);
+        document.removeEventListener('visibilitychange', onFocusOrVisible);
+      }
+      if (sharedBc) {
+        sharedBc.removeEventListener('message', bcHandler);
+      }
+    };
   },
 
   subscribeToPrice(date: string, onUpdate: (price: DailyPrice | null) => void): () => void {
     const local = getLocalDailyPrice(date);
     if (local) onUpdate(local);
 
+    let unsubSnapshot = () => {};
     try {
       const docRef = doc(db, 'daily_prices', date);
-      const unsubscribe = onSnapshot(
+      unsubSnapshot = onSnapshot(
         docRef,
         (snap) => {
           if (snap.exists()) {
@@ -754,10 +858,64 @@ export const EggAgencyService = {
           console.warn('Price snapshot listener notice (offline fallback active):', error);
         }
       );
-      return unsubscribe;
     } catch {
-      return () => {};
+      // offline fallback
     }
+
+    const onCustomEvent = (e: any) => {
+      if (e.detail && e.detail.date === date) {
+        onUpdate(e.detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sss_price_changed', onCustomEvent);
+    }
+
+    const onStorageEvent = (e: StorageEvent) => {
+      if (e.key === `sss_price_${date}` && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          onUpdate(parsed);
+        } catch {}
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', onStorageEvent);
+    }
+
+    let broadcastChannel: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        broadcastChannel = new BroadcastChannel('sss_sync_channel');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === 'PRICE_UPDATED' && event.data?.price?.date === date) {
+            onUpdate(event.data.price);
+          }
+        };
+      }
+    } catch {}
+
+    const pollInterval = setInterval(() => {
+      this.fetchRemotePrice(date).then((remote) => {
+        if (remote) {
+          onUpdate(remote);
+        }
+      }).catch(() => {});
+    }, 3000);
+
+    return () => {
+      unsubSnapshot();
+      clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sss_price_changed', onCustomEvent);
+        window.removeEventListener('storage', onStorageEvent);
+      }
+      if (broadcastChannel) {
+        try {
+          broadcastChannel.close();
+        } catch {}
+      }
+    };
   },
 
   subscribeToNotifications(onUpdate: (notifs: BillNotification[]) => void): () => void {
@@ -822,18 +980,18 @@ export const EggAgencyService = {
   },
 
   /**
-   * Cleans up all past days' data from Firestore (bills, stock, price, notifications)
-   * so every calendar day operates on a 100% clean, fresh slate.
+   * Cleans up data older than 3 days from Firestore (bills, stock, price, notifications).
+   * Retains the last 3 days of operational records (today, yesterday, day before yesterday).
    */
   async purgePastDaysData(currentDate: string = getTodayDateString()): Promise<void> {
     try {
-      // 1. Purge past bills
+      // 1. Purge bills older than 3 days
       const billsSnap = await getDocs(collection(db, 'bills'));
       const billBatch = writeBatch(db);
       let billsToDelete = 0;
       billsSnap.docs.forEach((d) => {
         const data = d.data();
-        if (data.date !== currentDate) {
+        if (data.date && isOlderThanDays(data.date, 3, currentDate)) {
           billBatch.delete(d.ref);
           billsToDelete++;
         }
@@ -842,12 +1000,12 @@ export const EggAgencyService = {
         await billBatch.commit();
       }
 
-      // 2. Purge past stock
+      // 2. Purge stock older than 3 days
       const stockSnap = await getDocs(collection(db, 'daily_stock'));
       const stockBatch = writeBatch(db);
       let stockToDelete = 0;
       stockSnap.docs.forEach((d) => {
-        if (d.id !== currentDate) {
+        if (isOlderThanDays(d.id, 3, currentDate)) {
           stockBatch.delete(d.ref);
           stockToDelete++;
         }
@@ -856,12 +1014,12 @@ export const EggAgencyService = {
         await stockBatch.commit();
       }
 
-      // 3. Purge past prices
+      // 3. Purge prices older than 3 days
       const priceSnap = await getDocs(collection(db, 'daily_prices'));
       const priceBatch = writeBatch(db);
       let pricesToDelete = 0;
       priceSnap.docs.forEach((d) => {
-        if (d.id !== currentDate) {
+        if (isOlderThanDays(d.id, 3, currentDate)) {
           priceBatch.delete(d.ref);
           pricesToDelete++;
         }
@@ -870,13 +1028,13 @@ export const EggAgencyService = {
         await priceBatch.commit();
       }
 
-      // 4. Purge past notifications
+      // 4. Purge notifications older than 3 days
       const notifSnap = await getDocs(collection(db, 'notifications'));
       const notifBatch = writeBatch(db);
       let notifsToDelete = 0;
       notifSnap.docs.forEach((d) => {
         const data = d.data();
-        if (data.date !== currentDate) {
+        if (data.date && isOlderThanDays(data.date, 3, currentDate)) {
           notifBatch.delete(d.ref);
           notifsToDelete++;
         }

@@ -227,8 +227,8 @@ export const EmployeeDashboard: React.FC<Props> = ({
     if (isStockInsufficient) {
       setBillingError(
         isTamil
-          ? `கையிருப்பு போதாது! ${Math.floor(remainingStock / 30)} தாரா மட்டுமே உள்ளது.`
-          : `Insufficient stock! Only ${Math.floor(remainingStock / 30)} Trays available.`
+          ? `கையிருப்பு போதாது! ${Math.floor(remainingStock / 30)} தாரா (${remainingStock} முட்டை) மட்டுமே உள்ளது.`
+          : `Insufficient stock! Only ${Math.floor(remainingStock / 30)} Trays (${remainingStock} Eggs) available.`
       );
       if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate([100, 50, 100]);
@@ -337,13 +337,13 @@ export const EmployeeDashboard: React.FC<Props> = ({
   const pendingSyncCount = bills.filter((b) => b.syncStatus === 'pending').length;
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-100 text-slate-800 overflow-hidden">
-      {/* Top Bar Header */}
-      <header className="bg-blue-800 text-white px-3.5 py-3 shadow-md shrink-0">
+    <div className="flex-1 flex flex-col bg-slate-100 text-slate-800 overflow-hidden select-none">
+      {/* Top Bar Header - Compact */}
+      <header className="bg-blue-800 text-white px-3 py-2 shadow-xs shrink-0">
         <div className="flex items-center justify-between gap-2">
           {/* Left: Brand Name only */}
           <div className="min-w-0 flex-1">
-            <h1 className="font-black text-base tracking-tight uppercase truncate leading-tight">
+            <h1 className="font-black text-sm tracking-tight uppercase truncate leading-tight">
               {isTamil && settings.agencyName === 'SSS EGG AGENCY'
                 ? t('agencyNameDefault')
                 : settings.agencyName || t('agencyNameDefault')}
@@ -362,15 +362,15 @@ export const EmployeeDashboard: React.FC<Props> = ({
                 playPrintClickSound();
                 setShowPrinterModal(true);
               }}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+              className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 transition-all shadow-2xs cursor-pointer ${
                 printer.connected
                   ? 'bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-black'
-                  : 'bg-white/15 hover:bg-white/25 text-white'
+                  : 'bg-white/15 hover:bg-white/25 text-white font-bold'
               }`}
               title={printer.connected ? 'Thermal Printer Connected' : 'Connect Bluetooth Printer'}
             >
-              <Printer className="w-3.5 h-3.5 shrink-0" />
-              <span className="text-xs font-bold hidden sm:inline">
+              <Printer className="w-3 h-3 shrink-0" />
+              <span className="font-bold hidden sm:inline">
                 {printer.connected
                   ? isTamil
                     ? 'பிரிண்டர் தயார்'
@@ -385,123 +385,131 @@ export const EmployeeDashboard: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setShowLogoutModal(true)}
-              className="p-2 rounded-xl bg-white/10 hover:bg-rose-600/80 text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg bg-white/10 hover:bg-rose-600/80 text-white transition-colors cursor-pointer"
               title={t('logout')}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Sync banner if pending bills */}
         {pendingSyncCount > 0 && (
-          <div className="mt-2 bg-amber-400/25 border border-amber-300/40 rounded-xl px-2.5 py-1 flex items-center justify-between text-xs font-black text-amber-200">
+          <div className="mt-1.5 bg-amber-400/25 border border-amber-300/40 rounded-lg px-2 py-0.5 flex items-center justify-between text-[11px] font-black text-amber-200">
             <span>{pendingSyncCount} {t('pendingSync')}</span>
             <button
               onClick={triggerAutoSync}
               disabled={isSyncing || !isOnline}
-              className="text-xs font-black bg-amber-400 text-amber-950 px-2.5 py-0.5 rounded-lg flex items-center gap-1"
+              className="text-[10px] font-black bg-amber-400 text-amber-950 px-2 py-0.5 rounded flex items-center gap-1 cursor-pointer"
             >
-              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? '...' : t('update')}
             </button>
           </div>
         )}
 
         {syncStatusMsg && (
-          <div className="mt-2 bg-emerald-400/25 border border-emerald-300/40 rounded-xl px-2.5 py-1 text-xs font-black text-emerald-200">
+          <div className="mt-1.5 bg-emerald-400/25 border border-emerald-300/40 rounded-lg px-2 py-0.5 text-[11px] font-black text-emerald-200">
             {syncStatusMsg}
           </div>
         )}
       </header>
 
-      {/* Navigation Tabs - Clean, Equal, Single Line */}
-      <nav aria-label="Employee Navigation" className="bg-white border-b border-slate-200 px-3 py-2 flex gap-2 shrink-0 shadow-xs">
+      {/* Navigation Tabs - Compact */}
+      <nav aria-label="Employee Navigation" className="bg-white border-b border-slate-200 px-2.5 py-1.5 flex gap-1.5 shrink-0 shadow-2xs">
         <button
           type="button"
           onClick={() => setActiveTab('billing')}
-          className={`flex-1 py-2.5 px-3 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-1.5 px-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'billing'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-              : 'text-slate-600 hover:bg-slate-100 font-bold'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-bold'
           }`}
         >
-          <PlusCircle className="w-4 h-4 shrink-0" />
+          <PlusCircle className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">{isTamil ? 'பில் போடுதல்' : 'New Bill'}</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('history')}
-          className={`flex-1 py-2.5 px-3 rounded-2xl font-black text-sm flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-1.5 px-2.5 rounded-xl font-black text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
             activeTab === 'history'
-              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
-              : 'text-slate-600 hover:bg-slate-100 font-bold'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-700 hover:bg-slate-100 font-bold'
           }`}
         >
-          <History className="w-4 h-4 shrink-0" />
+          <History className="w-3.5 h-3.5 shrink-0" />
           <span className="truncate">{isTamil ? 'பில் வரலாறு' : 'History'} ({bills.length})</span>
         </button>
       </nav>
 
-      {/* TAB CONTENT: BILLING SCREEN */}
+      {/* TAB CONTENT: BILLING SCREEN - All Divs Small & Space Efficient */}
       {activeTab === 'billing' && (
-        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
-          {/* Rate & Stock Grid: Minimalist, Clean Big Numbers */}
-          <div className="grid grid-cols-2 gap-2.5">
+        <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-2 sm:p-2.5 space-y-2">
+          {/* Rate & Stock Grid: Compact Big Numbers */}
+          <div className="grid grid-cols-2 gap-2">
             {/* Card 1: Today's Rate (1 Tara) */}
-            <div className="bg-white rounded-2xl p-3 border-2 border-blue-100 shadow-xs flex flex-col justify-between">
-              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
+            <div className="bg-white rounded-xl p-2 sm:p-2.5 border border-blue-200 shadow-2xs flex flex-col justify-between">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                 {isTamil ? 'இன்றைய தாரா விலை' : "Today's 1 Tara Rate"}
               </div>
-              <div className="mt-1">
-                <div className="text-xl md:text-2xl font-black text-blue-900 font-mono leading-none">
+              <div className="mt-0.5">
+                <div className="text-lg sm:text-xl font-black text-blue-900 font-mono leading-tight">
                   ₹{pricePer30Eggs}
                 </div>
               </div>
             </div>
 
-            {/* Card 2: In Stock (Trays) */}
-            <div className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs flex flex-col justify-between">
-              <div className="text-xs font-black text-slate-400 uppercase tracking-wider">
-                {isTamil ? 'கையிருப்பு (தாரா)' : 'In Stock (Trays)'}
+            {/* Card 2: In Stock (Trays & Under show Remaining Eggs) */}
+            <div className="bg-white rounded-xl p-2 sm:p-2.5 border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                <span>{isTamil ? 'கையிருப்பு (தாரா)' : 'In Stock (Trays)'}</span>
+                <span className="text-[9px] font-mono font-black text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded-full">
+                  {isTamil ? 'நேரலை' : 'Live'}
+                </span>
               </div>
-              <div className="mt-1">
-                <div className="text-xl md:text-2xl font-black text-slate-900 font-mono leading-none flex items-baseline gap-1">
+              <div className="mt-0.5">
+                <div className="text-lg sm:text-xl font-black text-slate-900 font-mono leading-tight flex items-baseline gap-1">
                   <span>{Math.floor(remainingStock / 30).toLocaleString('en-IN')}</span>
                   {remainingStock % 30 > 0 && (
-                    <span className="text-xs font-bold text-slate-500 font-sans">
+                    <span className="text-[11px] font-bold text-slate-500 font-sans">
                       (+{remainingStock % 30})
                     </span>
                   )}
+                  <span className="text-xs font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                </div>
+                {/* Under show the remaining egg */}
+                <div className="text-[10px] font-black text-slate-600 font-mono mt-0.5">
+                  {remainingStock.toLocaleString('en-IN')} {isTamil ? 'மீதமுள்ள முட்டை' : 'Remaining Eggs'}
                 </div>
               </div>
             </div>
           </div>
 
           {/* Quantity & Calculation Card with Directly Editable Total Amount */}
-          <div className="bg-white rounded-2xl p-3.5 border-2 border-slate-200 shadow-xs space-y-3">
+          <div className="bg-white rounded-xl p-2 sm:p-2.5 border border-slate-200 shadow-2xs space-y-2">
             {/* Display Box with Quantity in Trays on Left, Directly Editable Total Amount on Right */}
-            <div className="bg-slate-50 border-2 border-blue-300 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-inner">
+            <div className="bg-slate-50 border border-blue-300 rounded-xl p-2 sm:p-2.5 flex items-center justify-between gap-2 shadow-inner">
               {/* Left: Entered Quantity in Trays */}
               <div className="min-w-0">
-                <div className="text-[11px] font-bold text-slate-500">
+                <div className="text-[10px] font-bold text-slate-500">
                   {isTamil ? 'அளவு (தாரா)' : 'Quantity (Trays)'}
                 </div>
-                <div className="text-3xl font-black text-slate-900 font-mono tracking-tight flex items-baseline gap-1.5 truncate mt-0.5">
+                <div className="text-2xl font-black text-slate-900 font-mono tracking-tight flex items-baseline gap-1 truncate mt-0.5">
                   <span>{trayQuantityStr || '0'}</span>
-                  <span className="text-sm font-black text-blue-700 font-sans">
+                  <span className="text-xs font-black text-blue-700 font-sans">
                     {isTamil ? 'தாரா' : 'Trays'}
                   </span>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="h-10 w-px bg-slate-300 shrink-0" />
+              <div className="h-8 w-px bg-slate-300 shrink-0" />
 
               {/* Right: Directly Editable Total Amount */}
               <div className="text-right shrink-0">
-                <div className="text-[11px] font-bold text-slate-500 flex items-center justify-end gap-1.5">
+                <div className="text-[10px] font-bold text-slate-500 flex items-center justify-end gap-1">
                   <span>{t('totalAmount')}</span>
                   {customAmountStr !== '' && (
                     <button
@@ -510,7 +518,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                         setCustomAmountStr('');
                         setIsEditingAmount(false);
                       }}
-                      className="text-[10px] text-blue-600 font-black hover:underline cursor-pointer bg-blue-50 px-1.5 py-0.5 rounded"
+                      className="text-[9px] text-blue-600 font-black hover:underline cursor-pointer bg-blue-50 px-1 py-0.2 rounded"
                       title={isTamil ? 'தானியங்கி கணக்கீட்டிற்கு மீட்டமை' : 'Reset to auto rate'}
                     >
                       {isTamil ? 'தானியங்கி' : 'Auto'}
@@ -519,7 +527,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                 </div>
 
                 <div className="flex items-center justify-end gap-1 mt-0.5">
-                  <span className="text-xl sm:text-2xl font-black text-blue-700 font-mono">₹</span>
+                  <span className="text-lg sm:text-xl font-black text-blue-700 font-mono">₹</span>
                   <input
                     type="number"
                     value={customAmountStr !== '' ? customAmountStr : (calculatedTotal > 0 ? calculatedTotal : '')}
@@ -528,11 +536,11 @@ export const EmployeeDashboard: React.FC<Props> = ({
                       setIsEditingAmount(true);
                     }}
                     placeholder={String(calculatedTotal || '0')}
-                    className="w-28 sm:w-32 px-2 py-0.5 border-2 border-blue-400 focus:border-blue-700 rounded-xl text-xl sm:text-2xl font-black font-mono text-blue-900 bg-white shadow-inner text-right focus:outline-hidden"
+                    className="w-24 sm:w-28 px-1.5 py-0.5 border border-blue-400 focus:border-blue-700 rounded-lg text-lg sm:text-xl font-black font-mono text-blue-900 bg-white shadow-inner text-right focus:outline-hidden"
                     title={isTamil ? 'தொகையை நேரடியாக மாற்றலாம்' : 'Directly editable total amount'}
                   />
                 </div>
-                <div className="text-[10px] font-bold text-blue-600 mt-0.5">
+                <div className="text-[9px] font-bold text-blue-600 mt-0.5">
                   {customAmountStr !== ''
                     ? (isTamil ? '✏️ மாற்றப்பட்ட தொகை' : '✏️ Custom Amount')
                     : (isTamil ? '✏️ தொகையை மாற்றலாம்' : '✏️ Editable Amount')}
@@ -542,27 +550,27 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
             {/* Stock Insufficient Warning */}
             {isStockInsufficient && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-xs text-rose-700 font-bold flex items-center gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="bg-rose-50 border border-rose-200 rounded-lg p-2 text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                 <span>
                   {isTamil
-                    ? `கையிருப்பு போதாது! ${Math.floor(remainingStock / 30)} தாரா மட்டுமே உள்ளது.`
-                    : `Insufficient stock! Only ${Math.floor(remainingStock / 30)} Trays available.`}
+                    ? `கையிருப்பு போதாது! ${Math.floor(remainingStock / 30)} தாரா (${remainingStock} முட்டை) மட்டுமே உள்ளது.`
+                    : `Insufficient stock! Only ${Math.floor(remainingStock / 30)} Trays (${remainingStock} Eggs) available.`}
                 </span>
               </div>
             )}
 
             {billingError && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-xs text-rose-700 font-bold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="bg-rose-50 border border-rose-200 rounded-lg p-2 text-xs text-rose-700 font-bold flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                 <span>{billingError}</span>
               </div>
             )}
           </div>
 
-          {/* Quick-Add Quantity Chips in Trays */}
-          <div className="space-y-1">
-            <div className="text-[10px] font-black text-slate-400 uppercase px-0.5">
+          {/* Quick-Add Quantity Chips in Trays - Compact */}
+          <div className="space-y-0.5">
+            <div className="text-[9px] font-black text-slate-500 uppercase px-0.5">
               {isTamil ? 'விரைவு தாரா அளவு' : 'Quick Trays'}
             </div>
             <div className="grid grid-cols-5 gap-1">
@@ -571,10 +579,10 @@ export const EmployeeDashboard: React.FC<Props> = ({
                   key={qty}
                   type="button"
                   onClick={() => handleSetQuick(qty)}
-                  className={`h-8 rounded-lg font-black text-xs flex items-center justify-center border transition-all active:scale-95 ${
+                  className={`h-7 rounded-md font-black text-[11px] flex items-center justify-center border transition-all active:scale-95 cursor-pointer ${
                     trayCount === qty
-                      ? 'bg-blue-600 text-white border-blue-700 shadow-2xs'
-                      : 'bg-white hover:bg-blue-50 text-slate-700 border-slate-200 shadow-2xs'
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-black'
+                      : 'bg-white hover:bg-blue-50 text-slate-800 border-slate-200 shadow-2xs font-bold'
                   }`}
                 >
                   {qty} {isTamil ? 'தா' : 'T'}
@@ -583,15 +591,15 @@ export const EmployeeDashboard: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Touch Number Pad for Phone */}
-          <div className="bg-white rounded-2xl p-2.5 border-2 border-slate-200 shadow-xs">
-            <div className="grid grid-cols-3 gap-1.5">
+          {/* Touch Number Pad for Phone - Compact */}
+          <div className="bg-white rounded-xl p-1.5 border border-slate-200 shadow-2xs">
+            <div className="grid grid-cols-3 gap-1">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                 <button
                   key={d}
                   type="button"
                   onClick={() => handleKeypadDigit(d)}
-                  className="h-13 rounded-xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-2xs font-mono"
+                  className="h-10 sm:h-11 rounded-lg bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-2xs font-mono cursor-pointer"
                 >
                   {d}
                 </button>
@@ -600,7 +608,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadClear}
-                className="h-13 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-sm flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
+                className="h-10 sm:h-11 rounded-lg bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-black text-xs flex items-center justify-center border border-slate-200 active:scale-95 transition-all cursor-pointer"
               >
                 {t('clear')}
               </button>
@@ -608,7 +616,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => handleKeypadDigit('0')}
-                className="h-13 rounded-xl bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-2xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-2xs font-mono"
+                className="h-10 sm:h-11 rounded-lg bg-slate-50 hover:bg-blue-50 active:bg-blue-100 text-slate-900 font-black text-xl flex items-center justify-center border border-slate-200 active:scale-95 transition-all shadow-2xs font-mono cursor-pointer"
               >
                 0
               </button>
@@ -616,26 +624,26 @@ export const EmployeeDashboard: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleKeypadBackspace}
-                className="h-13 rounded-xl bg-slate-100 hover:bg-rose-50 active:bg-rose-100 text-rose-600 flex items-center justify-center border border-slate-200 active:scale-95 transition-all"
+                className="h-10 sm:h-11 rounded-lg bg-slate-100 hover:bg-rose-50 active:bg-rose-100 text-rose-600 flex items-center justify-center border border-slate-200 active:scale-95 transition-all cursor-pointer"
               >
-                <Delete className="w-6 h-6" />
+                <Delete className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          {/* Main Action Button - Generate Bill & Print Receipt */}
-          <div className="pt-1 pb-4">
+          {/* Main Action Button - Generate Bill & Print Receipt - Compact */}
+          <div className="pt-0.5 pb-2">
             <button
               type="button"
               onClick={() => handleCreateBill()}
               disabled={isCreatingBill || trayCount <= 0 || isStockInsufficient}
-              className={`w-full py-4 px-4 rounded-2xl font-black text-base uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg transition-all active:scale-98 cursor-pointer ${
+              className={`w-full py-2.5 px-3 rounded-xl font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-md transition-all active:scale-98 cursor-pointer ${
                 trayCount > 0 && !isStockInsufficient
-                  ? 'bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white shadow-blue-500/30 ring-2 ring-blue-400/40'
+                  ? 'bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white shadow-blue-500/25 ring-1 ring-blue-400/40'
                   : 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
               }`}
             >
-              <Receipt className="w-5 h-5 shrink-0" />
+              <Receipt className="w-4 h-4 shrink-0" />
               <div className="text-center leading-tight">
                 <div>
                   {isCreatingBill
@@ -643,7 +651,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                     : (isTamil ? 'பில் போடு & அச்சிடு' : 'Generate Bill & Print')}
                 </div>
                 {trayCount > 0 && !isStockInsufficient && !isCreatingBill && (
-                  <div className="text-xs font-mono font-bold opacity-90 normal-case tracking-normal">
+                  <div className="text-[11px] font-mono font-bold opacity-90 normal-case tracking-normal">
                     {trayCount} {isTamil ? 'தாரா' : 'Trays'} ({totalEggs} {t('eggs')}) = ₹{finalTotalAmount.toLocaleString('en-IN')}
                   </div>
                 )}
@@ -657,24 +665,25 @@ export const EmployeeDashboard: React.FC<Props> = ({
       {activeTab === 'history' && (
         <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar p-3 space-y-3">
           {/* Search Bar */}
+          {/* Search Bar - Compact */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder={t('searchHistoryPlaceholder')}
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
-              className="w-full bg-white border-2 border-slate-300 rounded-2xl pl-10 pr-3 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+              className="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500 shadow-2xs"
             />
           </div>
 
-          {/* Bills List - Clean Mobile Alignment */}
-          <div className="flex-1 space-y-2.5">
+          {/* Bills List - Clean Mobile Alignment & Compact Cards */}
+          <div className="flex-1 space-y-1.5">
             {filteredBills.length === 0 ? (
-              <div className="bg-white rounded-2xl p-6 text-center border-2 border-slate-200 text-slate-500 space-y-1.5">
-                <Egg className="w-10 h-10 mx-auto text-slate-300" />
-                <p className="font-black text-sm text-slate-700">{t('noBillsFound')}</p>
-                <p className="text-xs font-bold text-slate-500">
+              <div className="bg-white rounded-xl p-4 text-center border border-slate-200 text-slate-500 space-y-1">
+                <Egg className="w-8 h-8 mx-auto text-slate-300" />
+                <p className="font-black text-xs text-slate-700">{t('noBillsFound')}</p>
+                <p className="text-[11px] font-bold text-slate-500">
                   {t('noBillsRecordedYet')}
                 </p>
               </div>
@@ -682,17 +691,17 @@ export const EmployeeDashboard: React.FC<Props> = ({
               filteredBills.map((b) => (
                 <div
                   key={b.billId}
-                  className="bg-white rounded-2xl p-3 border-2 border-slate-200 shadow-xs flex items-center justify-between gap-2.5 hover:border-blue-300 transition-all"
+                  className="bg-white rounded-xl p-2 sm:p-2.5 border border-slate-200 shadow-2xs flex items-center justify-between gap-2 hover:border-blue-300 transition-all"
                 >
                   {/* Left Details */}
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-mono font-black text-sm text-blue-900">
+                      <span className="font-mono font-black text-xs sm:text-sm text-blue-900">
                         {t('billNo')} #{b.billNumber}
                       </span>
 
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                        className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
                           b.syncStatus === 'synced'
                             ? 'bg-blue-50 text-blue-700'
                             : 'bg-slate-100 text-slate-700'
@@ -703,30 +712,30 @@ export const EmployeeDashboard: React.FC<Props> = ({
 
                       {/* Delete Request Status Badge */}
                       {b.deleteRequest?.status === 'pending' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full font-black bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
                           {isTamil ? 'நீக்குதல் கோரப்பட்டது' : 'Delete Requested'}
                         </span>
                       )}
                     </div>
 
-                    <div className="text-xs font-bold text-slate-700 truncate">
+                    <div className="text-[11px] font-bold text-slate-700 truncate">
                       <span>{Math.floor(b.eggQuantity / 30)} {isTamil ? 'தாரா' : 'Trays'} ({b.eggQuantity} {t('eggs')})</span>
                       <span className="text-slate-400"> • </span>
                       <span>₹{b.pricePer30Eggs || Math.round(b.pricePerEgg * 30)}/தாரா</span>
                     </div>
 
-                    <div className="text-[11px] font-bold text-slate-500 truncate">
+                    <div className="text-[10px] font-bold text-slate-500 truncate">
                       {b.time} • {t('staff')}: {b.employeeName}
                     </div>
                   </div>
 
                   {/* Right Amount & Actions (Receipt View, PDF, Delete) */}
-                  <div className="text-right shrink-0 space-y-1.5">
-                    <div className="font-black text-base sm:text-lg text-slate-950 font-mono">
+                  <div className="text-right shrink-0 space-y-1">
+                    <div className="font-black text-sm sm:text-base text-slate-950 font-mono">
                       ₹{Math.round(b.totalAmount).toLocaleString('en-IN')}
                     </div>
 
-                    <div className="flex items-center justify-end gap-1.5">
+                    <div className="flex items-center justify-end gap-1">
                       {/* View / Print Receipt */}
                       <button
                         type="button"
@@ -734,10 +743,10 @@ export const EmployeeDashboard: React.FC<Props> = ({
                           setIsReceiptDraft(false);
                           setActiveReceiptBill(b);
                         }}
-                        className="bg-blue-50 hover:bg-blue-100 text-blue-900 text-xs font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1 border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-900 text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1 border border-blue-200 active:scale-95 transition-all shadow-2xs cursor-pointer"
                         title={isTamil ? 'பில் ரசீது அச்சிடு / பார்' : 'View / Print Receipt'}
                       >
-                        <Receipt className="w-3.5 h-3.5 text-blue-700" />
+                        <Receipt className="w-3 h-3 text-blue-700" />
                         <span>{isTamil ? 'ரசீது' : 'Receipt'}</span>
                       </button>
 
@@ -745,10 +754,10 @@ export const EmployeeDashboard: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => handleDirectPdfDownload(b)}
-                        className="bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-black px-2 py-1.5 rounded-xl flex items-center gap-1 border border-slate-200 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                        className="bg-slate-50 hover:bg-slate-100 text-slate-700 text-[10px] font-black px-1.5 py-1 rounded-lg flex items-center gap-0.5 border border-slate-200 active:scale-95 transition-all cursor-pointer shadow-2xs"
                         title={isTamil ? 'PDF பதிவிறக்க' : 'Download PDF'}
                       >
-                        <Download className="w-3.5 h-3.5 text-slate-600" />
+                        <Download className="w-3 h-3 text-slate-600" />
                         <span>PDF</span>
                       </button>
 
@@ -757,7 +766,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                         type="button"
                         disabled={b.deleteRequest?.status === 'pending'}
                         onClick={() => setBillToDeleteRequest(b)}
-                        className={`text-xs font-black px-2.5 py-1 rounded-xl flex items-center gap-1 border active:scale-95 transition-all ${
+                        className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-0.5 border active:scale-95 transition-all cursor-pointer ${
                           b.deleteRequest?.status === 'pending'
                             ? 'bg-rose-50 text-rose-300 border-rose-100 cursor-not-allowed'
                             : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 shadow-2xs'
@@ -768,7 +777,7 @@ export const EmployeeDashboard: React.FC<Props> = ({
                             : t('requestDelete')
                         }
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3 h-3" />
                         <span>
                           {b.deleteRequest?.status === 'pending'
                             ? (isTamil ? 'கோரப்பட்டது' : 'Requested')

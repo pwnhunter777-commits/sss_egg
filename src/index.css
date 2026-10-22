@@ -100,39 +100,45 @@ html[lang="en"] input::placeholder,
   opacity: 1 !important;
 }
 
-/* Tamil Typography Enhancement: High readability, ultra-bold and solid contrast without layout-breaking font-size bloat */
+/* Tamil Typography: Make ALL Tamil text distinctly BOLD (800-900) everywhere */
 html[lang="ta"],
 body.lang-ta,
-.lang-ta {
+.lang-ta,
+.font-tamil,
+[lang="ta"],
+*:lang(ta) {
   font-family: 'Noto Sans Tamil', 'Mukta Malar', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-weight: 800 !important;
   letter-spacing: 0.01em !important;
 }
 
-/* Ultra Bold weight for maximum block-ink density */
-html[lang="ta"] body,
-.lang-ta body,
-html[lang="ta"] p,
-.lang-ta p,
-html[lang="ta"] span,
-.lang-ta span,
-html[lang="ta"] div,
-.lang-ta div,
-html[lang="ta"] label,
-.lang-ta label,
-html[lang="ta"] button,
-.lang-ta button,
-html[lang="ta"] input,
-.lang-ta input,
-html[lang="ta"] h1,
-.lang-ta h1,
-html[lang="ta"] h2,
-.lang-ta h2,
-html[lang="ta"] h3,
-.lang-ta h3,
-html[lang="ta"] h4,
-.lang-ta h4 {
+/* Ultra Bold weight for maximum block-ink density across all Tamil elements */
+html[lang="ta"] *,
+body.lang-ta *,
+.lang-ta *,
+[lang="ta"] *,
+.font-tamil,
+.font-tamil * {
+  font-family: 'Noto Sans Tamil', 'Mukta Malar', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   font-weight: 800 !important;
   text-rendering: optimizeLegibility;
+}
+
+/* Headings, buttons, and badges in Tamil are maximum ultra bold (900) */
+html[lang="ta"] h1,
+html[lang="ta"] h2,
+html[lang="ta"] h3,
+html[lang="ta"] h4,
+html[lang="ta"] button,
+.lang-ta h1,
+.lang-ta h2,
+.lang-ta h3,
+.lang-ta h4,
+.lang-ta button,
+.lang-ta .font-black,
+.lang-ta .font-bold,
+[lang="ta"] button {
+  font-weight: 900 !important;
 }
 
 /* High-Contrast Bold Block Colours - Replace faded, light grey with solid rich block colours */
@@ -174,8 +180,9 @@ html[lang="ta"] .text-blue-300,
 
 /* Prominent input placeholder in bold block color */
 html[lang="ta"] input::placeholder,
-.lang-ta input::placeholder {
-  font-weight: 700 !important;
+.lang-ta input::placeholder,
+[lang="ta"] input::placeholder {
+  font-weight: 800 !important;
   color: #64748b !important;
   opacity: 1 !important;
   font-family: 'Noto Sans Tamil', 'Mukta Malar', sans-serif !important;
@@ -183,8 +190,9 @@ html[lang="ta"] input::placeholder,
 
 /* Button Tamil text bold block styling */
 html[lang="ta"] button,
-.lang-ta button {
-  font-weight: 800 !important;
+.lang-ta button,
+[lang="ta"] button {
+  font-weight: 900 !important;
 }
 
 @layer utilities {
