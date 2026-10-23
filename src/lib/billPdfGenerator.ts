@@ -25,11 +25,11 @@ export async function generateBillPdf(
   customerName: string = 'Shopkeeper',
   customerPhone: string = ''
 ): Promise<{ doc: jsPDF; fileName: string }> {
-  // Enhanced receipt format with generous width & clear readability: 115mm x 175mm
+  // Enhanced full bill receipt format with generous width & height: 130mm x 225mm
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [115, 175],
+    format: [130, 225],
   });
 
   const agencyName = settings.agencyName || 'SSS EGG AGENCY';
@@ -42,166 +42,193 @@ export async function generateBillPdf(
 
   // --- Background Canvas ---
   doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, 115, 175, 'F');
+  doc.rect(0, 0, 130, 225, 'F');
 
   // Top Header Banner (Dark Royal Blue)
   doc.setFillColor(30, 58, 138); // blue-900
-  doc.rect(0, 0, 115, 30, 'F');
+  doc.rect(0, 0, 130, 32, 'F');
 
   // Header Title - Large & Bold
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text(agencyName.toUpperCase(), 57.5, 11, { align: 'center' });
+  doc.setFontSize(17);
+  doc.text(agencyName.toUpperCase(), 65, 12, { align: 'center' });
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('WHOLESALE EGG DEALER & DISTRIBUTION', 57.5, 17, { align: 'center' });
+  doc.text('WHOLESALE EGG DEALER & DISTRIBUTION', 65, 19, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.text(`Phone: ${settings.phone || '+91 98765 43210'}`, 57.5, 23, { align: 'center' });
+  doc.text(`Phone: ${settings.phone || '+91 98765 43210'}`, 65, 26, { align: 'center' });
 
   // Bill Metadata Section
   doc.setFillColor(241, 245, 249); // slate-100
-  doc.roundedRect(6, 34, 103, 20, 2, 2, 'F');
+  doc.roundedRect(8, 36, 114, 22, 2, 2, 'F');
 
   doc.setTextColor(15, 23, 42); // slate-900
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(`INVOICE: #${billNumber}`, 10, 41);
+  doc.setFontSize(12);
+  doc.text(`INVOICE: #${billNumber}`, 12, 44);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Date: ${bill.date}`, 10, 47);
-  doc.text(`Time: ${bill.time}`, 10, 51.5);
+  doc.text(`Date: ${bill.date}`, 12, 50.5);
+  doc.text(`Time: ${bill.time}`, 12, 55);
 
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.text(`Payment:`, 58, 41);
+  doc.setFontSize(11);
+  doc.text(`Payment:`, 68, 44);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   if (bill.paymentMethod === 'gpay') {
     doc.setTextColor(29, 78, 216); // blue-700
-    doc.text(`GPAY / UPI`, 58, 47);
+    doc.text(`GPAY / UPI`, 68, 50.5);
   } else if (bill.paymentMethod === 'credit') {
     doc.setTextColor(180, 83, 9); // amber-700
-    doc.text(`CREDIT (DUE)`, 58, 47);
+    doc.text(`CREDIT (DUE)`, 68, 50.5);
   } else {
     doc.setTextColor(4, 120, 87); // emerald-700
-    doc.text(`CASH SALE`, 58, 47);
+    doc.text(`CASH SALE`, 68, 50.5);
   }
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
-  doc.text(`Staff: ${bill.employeeName || 'Staff'}`, 58, 51.5);
+  doc.text(`Staff: ${bill.employeeName || 'Staff'}`, 68, 55);
 
   // --- Table Header ---
   doc.setFillColor(30, 41, 59); // slate-800
-  doc.rect(6, 57, 103, 8, 'F');
+  doc.rect(8, 62, 114, 9, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9.5);
-  doc.text('ITEM DESCRIPTION', 10, 62.5);
-  doc.text('TARA (30)', 54, 62.5, { align: 'center' });
-  doc.text('RATE', 78, 62.5, { align: 'center' });
-  doc.text('AMOUNT', 105, 62.5, { align: 'right' });
+  doc.setFontSize(10);
+  doc.text('ITEM DESCRIPTION', 12, 68);
+  doc.text('TARA (30)', 60, 68, { align: 'center' });
+  doc.text('RATE', 86, 68, { align: 'center' });
+  doc.text('AMOUNT', 118, 68, { align: 'right' });
 
   // --- Table Row ---
   doc.setFillColor(255, 255, 255);
-  doc.rect(6, 65, 103, 16, 'F');
+  doc.rect(8, 71, 114, 17, 'F');
   doc.setDrawColor(203, 213, 225);
-  doc.line(6, 81, 109, 81);
+  doc.line(8, 88, 122, 88);
 
   doc.setTextColor(15, 23, 42); // slate-900
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('Fresh Farm Eggs', 10, 71.5);
+  doc.setFontSize(11.5);
+  doc.text('Fresh Farm Eggs', 12, 78);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text(`(${bill.eggQuantity} Eggs total)`, 10, 77);
+  doc.text(`(${bill.eggQuantity} Eggs total)`, 12, 84);
 
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
+  doc.setFontSize(12.5);
   doc.text(
     taraCount > 0
       ? `${taraCount} Tara${looseCount > 0 ? ` + ${looseCount}` : ''}`
       : `${bill.eggQuantity} Eggs`,
-    54,
-    73.5,
+    60,
+    80,
     { align: 'center' }
   );
 
-  doc.setFontSize(11.5);
-  doc.text(`Rs. ${ratePer30}`, 78, 73.5, {
+  doc.setFontSize(12);
+  doc.text(`Rs. ${ratePer30}`, 86, 80, {
     align: 'center',
   });
 
-  doc.setFontSize(12.5);
-  doc.text(`Rs. ${roundedTotal}`, 105, 73.5, { align: 'right' });
+  doc.setFontSize(13);
+  doc.text(`Rs. ${roundedTotal}`, 118, 80, { align: 'right' });
 
   // --- Grand Total Box (Large & High Contrast) ---
   doc.setFillColor(238, 242, 255); // indigo-50
   doc.setDrawColor(79, 70, 229); // indigo-600
-  doc.roundedRect(6, 85, 103, 19, 2, 2, 'FD');
+  doc.roundedRect(8, 92, 114, 21, 2, 2, 'FD');
 
   doc.setTextColor(67, 56, 202); // indigo-700
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('TOTAL AMOUNT PAYABLE:', 10, 96.5);
+  doc.setFontSize(11.5);
+  doc.text('TOTAL AMOUNT PAYABLE:', 13, 104);
 
   doc.setTextColor(15, 23, 42); // slate-900
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.text(`Rs. ${roundedTotal}`, 105, 98, { align: 'right' });
+  doc.setFontSize(22);
+  doc.text(`Rs. ${roundedTotal}`, 118, 105.5, { align: 'right' });
 
-  // --- Payment UPI Section with QR Code ---
+  // --- Payment UPI Section with Prominent Scanner ---
   doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(6, 108, 103, 48, 2, 2, 'FD');
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(8, 118, 114, 76, 2, 2, 'FD');
 
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.text('SCAN TO PAY VIA UPI (GPay / PhonePe / Paytm):', 12, 126);
+
+  // Left details inside the UPI card
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  doc.text('SCAN TO PAY VIA UPI (GPay / PhonePe / Paytm):', 10, 115);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`UPI ID:`, 12, 134);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${upiId}`, 12, 140);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
-  doc.text(`UPI ID: ${upiId}`, 10, 122);
-  doc.text(`Payee: ${agencyName}`, 10, 128);
-  doc.text(`Bill Ref: #${billNumber}`, 10, 134);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(4, 120, 87);
-  doc.text(`Amount: Rs. ${roundedTotal}`, 10, 140);
+  doc.text(`Payee: ${agencyName}`, 12, 147);
+  doc.text(`Invoice: #${billNumber}`, 12, 153);
 
-  // Generate UPI QR code for the exact bill amount
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(4, 120, 87);
+  doc.text(`Payable: Rs. ${roundedTotal}`, 12, 161);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(100, 116, 139);
+  doc.text('Open camera or any UPI app', 12, 172);
+  doc.text('Scan QR code to pay bill.', 12, 177);
+
+  // Generate UPI QR code for the exact bill amount (large & high resolution)
   try {
     const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(agencyName)}&am=${roundedTotal}&cu=INR&tn=${encodeURIComponent('Bill#' + billNumber)}`;
     const qrDataUrl = await QRCode.toDataURL(upiUrl, {
-      width: 160,
+      width: 320,
       margin: 1,
+      errorCorrectionLevel: 'M',
       color: { dark: '#000000', light: '#ffffff' },
     });
-    // Add larger QR Code image to PDF at (74, 117) with 31mm x 31mm size
-    doc.addImage(qrDataUrl, 'PNG', 72, 117, 32, 32);
+
+    // White backing card for QR code with border
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(30, 41, 59);
+    doc.roundedRect(70, 131, 48, 58, 2, 2, 'FD');
+
+    // Add crisp, large QR Code image to PDF at (72, 133) with 44mm x 44mm size
+    doc.addImage(qrDataUrl, 'PNG', 72, 133, 44, 44);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(30, 41, 59);
+    doc.text('SCAN & PAY', 94, 183, { align: 'center' });
   } catch (qrErr) {
     console.warn('Failed to render QR in PDF', qrErr);
   }
 
-  // Footer notes
-  doc.setTextColor(100, 116, 139);
+  // Footer notes - spaced properly without being cut off
+  doc.setTextColor(71, 85, 105);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text('Thank you for your business! Fresh & Quality Eggs.', 57.5, 163, {
+  doc.setFontSize(9.5);
+  doc.text('Thank you for your business! Fresh & Quality Eggs.', 65, 206, {
     align: 'center',
   });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text(`Generated by SSS Egg Agency Billing • ${bill.date}`, 57.5, 168, {
+  doc.setFontSize(8);
+  doc.text(`Generated by SSS Egg Agency Billing • ${bill.date}`, 65, 212, {
     align: 'center',
   });
 

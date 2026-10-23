@@ -224,14 +224,17 @@ export const OwnerDashboard: React.FC<Props> = ({
   const creditBills = bills.filter((b) => b.paymentMethod === 'credit');
 
   const totalCashWithEmployee = cashBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-  const totalGPayCollected = gpayBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-  const totalCreditOutstanding = creditBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalCashEggs = cashBills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
 
-  // Opening stock & Remaining Stock
+  const totalGPayCollected = gpayBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalGPayEggs = gpayBills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
+
+  const totalCreditOutstanding = creditBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+  const totalCreditEggs = creditBills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
+
+  // Opening stock & Remaining Stock - always reduces live as employee sells bills one by one
   const openingStock = todayStock?.openingStock ?? 0;
-  const remainingStock = todayStock?.remainingStock !== undefined
-    ? todayStock.remainingStock
-    : Math.max(0, openingStock - totalEggsSold);
+  const remainingStock = Math.max(0, openingStock - totalEggsSold);
 
   // Profit Calculation: Profit = Total Sales - Cost of Eggs Sold
   // Purchase cost is taken from today's stock purchase price
@@ -573,58 +576,70 @@ export const OwnerDashboard: React.FC<Props> = ({
             </div>
 
             {/* Payment Collections Breakdown: Cash with Employee, GPay, Credit */}
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
               {/* Card A: CASH WITH EMPLOYEE */}
-              <div className="bg-emerald-50 rounded-xl p-2 sm:p-2.5 border border-emerald-300 shadow-2xs">
-                <div className="text-[10px] font-black text-emerald-900 uppercase tracking-wider flex items-center gap-1 truncate">
-                  <Banknote className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+              <div className="bg-emerald-50 rounded-2xl p-3 sm:p-4 border-2 border-emerald-400 shadow-sm flex flex-col justify-between">
+                <div className="text-xs sm:text-sm font-black text-emerald-950 uppercase tracking-wide flex items-center gap-1.5 truncate">
+                  <Banknote className="w-4 h-4 text-emerald-700 shrink-0" />
                   <span className="truncate">{isTamil ? 'கையில் ரொக்கம்' : 'Cash in Hand'}</span>
                 </div>
-                <div className="text-base sm:text-xl font-black text-emerald-950 font-mono mt-1 tracking-tight truncate">
+                <div className="text-xl sm:text-2xl font-black text-emerald-950 font-mono mt-1.5 tracking-tight truncate">
                   {formatIndianCurrency(totalCashWithEmployee)}
+                </div>
+                {/* Tara Sold in Cash - Large & Bold */}
+                <div className="text-base sm:text-lg font-black text-emerald-900 font-mono mt-1 tracking-tight truncate">
+                  {Math.floor(totalCashEggs / 30)} {isTamil ? 'தாரா' : 'Trays'}{totalCashEggs % 30 > 0 ? ` (+${totalCashEggs % 30})` : ''}
                 </div>
               </div>
 
               {/* Card B: GPAY COLLECTED */}
-              <div className="bg-blue-50 rounded-xl p-2 sm:p-2.5 border border-blue-300 shadow-2xs">
-                <div className="text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-1 truncate">
-                  <Smartphone className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+              <div className="bg-blue-50 rounded-2xl p-3 sm:p-4 border-2 border-blue-400 shadow-sm flex flex-col justify-between">
+                <div className="text-xs sm:text-sm font-black text-blue-950 uppercase tracking-wide flex items-center gap-1.5 truncate">
+                  <Smartphone className="w-4 h-4 text-blue-700 shrink-0" />
                   <span className="truncate">{isTamil ? 'GPay வசூல்' : 'GPay / UPI'}</span>
                 </div>
-                <div className="text-base sm:text-xl font-black text-blue-950 font-mono mt-1 tracking-tight truncate">
+                <div className="text-xl sm:text-2xl font-black text-blue-950 font-mono mt-1.5 tracking-tight truncate">
                   {formatIndianCurrency(totalGPayCollected)}
+                </div>
+                {/* Tara Sold in GPay - Large & Bold */}
+                <div className="text-base sm:text-lg font-black text-blue-900 font-mono mt-1 tracking-tight truncate">
+                  {Math.floor(totalGPayEggs / 30)} {isTamil ? 'தாரா' : 'Trays'}{totalGPayEggs % 30 > 0 ? ` (+${totalGPayEggs % 30})` : ''}
                 </div>
               </div>
 
               {/* Card C: CREDIT */}
-              <div className="bg-amber-50 rounded-xl p-2 sm:p-2.5 border border-amber-300 shadow-2xs">
-                <div className="text-[10px] font-black text-amber-900 uppercase tracking-wider flex items-center gap-1 truncate">
-                  <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <div className="bg-amber-50 rounded-2xl p-3 sm:p-4 border-2 border-amber-400 shadow-sm flex flex-col justify-between">
+                <div className="text-xs sm:text-sm font-black text-amber-950 uppercase tracking-wide flex items-center gap-1.5 truncate">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0" />
                   <span className="truncate">{isTamil ? 'கடன் பாக்கி' : 'Credit / Due'}</span>
                 </div>
-                <div className="text-base sm:text-xl font-black text-amber-950 font-mono mt-1 tracking-tight truncate">
+                <div className="text-xl sm:text-2xl font-black text-amber-950 font-mono mt-1.5 tracking-tight truncate">
                   {formatIndianCurrency(totalCreditOutstanding)}
+                </div>
+                {/* Tara Sold in Credit - Large & Bold */}
+                <div className="text-base sm:text-lg font-black text-amber-900 font-mono mt-1 tracking-tight truncate">
+                  {Math.floor(totalCreditEggs / 30)} {isTamil ? 'தாரா' : 'Trays'}{totalCreditEggs % 30 > 0 ? ` (+${totalCreditEggs % 30})` : ''}
                 </div>
               </div>
             </div>
 
-            {/* Grid 2 Columns: TOTAL STOCK & REMAINING STOCK - Compact */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Grid 2 Columns: TOTAL STOCK & REMAINING STOCK */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               {/* Card 2A: TOTAL STOCK */}
-              <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
+              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border-2 border-slate-300 shadow-sm">
+                <div className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide flex items-center justify-between">
                   <span>{isTamil ? 'மொத்த வரவு' : 'Total Stock'}</span>
                   {todayStock?.importHistory && todayStock.importHistory.length > 0 && (
-                    <span className="text-[9px] font-mono font-black text-blue-800 bg-blue-100 px-1.5 py-0.2 rounded-full">
+                    <span className="text-[10px] font-mono font-black text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full">
                       {todayStock.importHistory.length} {isTamil ? 'வரவுகள்' : 'entries'}
                     </span>
                   )}
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono mt-1">
-                  {Math.floor(openingStock / 30).toLocaleString('en-IN')}{' '}
-                  <span className="text-xs font-black text-blue-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                <div className="text-2xl sm:text-3xl font-black text-slate-950 font-mono mt-1.5 flex items-baseline gap-1">
+                  <span>{Math.floor(openingStock / 30).toLocaleString('en-IN')}</span>
+                  <span className="text-sm sm:text-base font-black text-blue-700">{isTamil ? 'தாரா' : 'Trays'}</span>
                   {openingStock % 30 > 0 && (
-                    <span className="text-[10px] font-bold text-slate-500 ml-1">
+                    <span className="text-xs font-black text-slate-500 ml-1">
                       (+{openingStock % 30})
                     </span>
                   )}
@@ -632,18 +647,18 @@ export const OwnerDashboard: React.FC<Props> = ({
               </div>
 
               {/* Card 2B: REMAINING STOCK */}
-              <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider flex items-center justify-between">
+              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border-2 border-emerald-300 shadow-sm">
+                <div className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide flex items-center justify-between">
                   <span>{t('remainingStock')}</span>
-                  <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                  <span className="text-[10px] font-mono font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
                     {isTamil ? 'கையிருப்பு' : 'In Hand'}
                   </span>
                 </div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono mt-1">
-                  {Math.floor(remainingStock / 30).toLocaleString('en-IN')}{' '}
-                  <span className="text-xs font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                <div className="text-2xl sm:text-3xl font-black text-slate-950 font-mono mt-1.5 flex items-baseline gap-1">
+                  <span>{Math.floor(remainingStock / 30).toLocaleString('en-IN')}</span>
+                  <span className="text-sm sm:text-base font-black text-emerald-700">{isTamil ? 'தாரா' : 'Trays'}</span>
                   {remainingStock % 30 > 0 && (
-                    <span className="text-[10px] font-bold text-slate-500 ml-1">
+                    <span className="text-xs font-black text-slate-500 ml-1">
                       (+{remainingStock % 30})
                     </span>
                   )}
@@ -651,104 +666,36 @@ export const OwnerDashboard: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Grid 3 Columns: EGGS SOLD, TOTAL BILLS, PROFIT - Compact */}
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            {/* Grid 3 Columns: EGGS SOLD, TOTAL BILLS, PROFIT */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
               {/* EGGS SOLD */}
-              <div className="bg-white rounded-xl p-2 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">
+              <div className="bg-white rounded-2xl p-3 sm:p-3.5 border-2 border-slate-300 shadow-sm">
+                <div className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide truncate">
                   {t('eggsSold')}
                 </div>
-                <div className="text-base sm:text-lg font-black text-slate-900 font-mono mt-0.5 leading-tight">
-                  {Math.floor(totalEggsSold / 30)}{' '}
-                  <span className="text-[10px] font-bold text-blue-700">{isTamil ? 'தாரா' : 'T'}</span>
-                </div>
-                <div className="text-[9px] font-bold text-slate-400 font-mono mt-0.5">
-                  {totalEggsSold} {t('eggs')}
+                <div className="text-xl sm:text-2xl font-black text-slate-950 font-mono mt-1.5 leading-tight flex items-baseline gap-1">
+                  <span>{Math.floor(totalEggsSold / 30)}</span>
+                  <span className="text-xs sm:text-sm font-black text-blue-700">{isTamil ? 'தாரா' : 'T'}</span>
                 </div>
               </div>
 
               {/* TOTAL BILLS */}
-              <div className="bg-white rounded-xl p-2 border border-slate-200 shadow-2xs">
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">
+              <div className="bg-white rounded-2xl p-3 sm:p-3.5 border-2 border-slate-300 shadow-sm">
+                <div className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide truncate">
                   {t('totalBills')}
                 </div>
-                <div className="text-base sm:text-lg font-black text-slate-900 font-mono mt-0.5 leading-tight">
+                <div className="text-xl sm:text-2xl font-black text-slate-950 font-mono mt-1.5 leading-tight">
                   {totalBillsCount}
-                </div>
-                <div className="text-[9px] font-bold text-slate-400 mt-0.5">
-                  {isTamil ? 'ரசீதுகள்' : 'Bills'}
                 </div>
               </div>
 
               {/* TODAY'S PROFIT */}
-              <div className="bg-emerald-50 rounded-xl p-2 border border-emerald-200 shadow-2xs">
-                <div className="text-[10px] font-black text-emerald-800 uppercase tracking-wider truncate">
+              <div className="bg-emerald-50 rounded-2xl p-3 sm:p-3.5 border-2 border-emerald-300 shadow-sm">
+                <div className="text-xs sm:text-sm font-black text-emerald-900 uppercase tracking-wide truncate">
                   {t('profit')}
                 </div>
-                <div className="text-base sm:text-lg font-black text-emerald-950 font-mono mt-0.5 leading-tight truncate">
+                <div className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono mt-1.5 leading-tight truncate">
                   {formatIndianCurrency(totalProfit)}
-                </div>
-                <div className="text-[9px] font-bold text-emerald-700 mt-0.5">
-                  {isTamil ? 'இன்றைய லாபம்' : 'Profit'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Employee-wise Sales & Cash in Hand with Employee - Compact */}
-          <div className="bg-white rounded-xl p-2.5 sm:p-3 border border-slate-200 shadow-2xs space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-black text-slate-800 uppercase flex items-center gap-1.5">
-                <User className="w-4 h-4 text-blue-600" />
-                <span>{t('staff')} {t('overview')} - Staff Ramesh</span>
-              </div>
-            </div>
-
-            {/* Cash in Hand with Employee Highlight Banner */}
-            <div className="p-2.5 bg-emerald-50/90 border-2 border-emerald-300 rounded-xl flex items-center justify-between shadow-2xs">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
-                  <Banknote className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-black text-emerald-950">
-                    {isTamil ? 'ஊழியரிடம் உள்ள மீதமுள்ள ரொக்கம்' : 'Remaining Cash with Employee'}
-                  </div>
-                  <div className="text-[10px] font-bold text-emerald-700">
-                    {isTamil ? 'ரொக்க வசூல் தொகை' : 'Total cash in hand collected'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="text-lg sm:text-xl font-black text-emerald-900 font-mono">
-                  {formatIndianCurrency(totalCashWithEmployee)}
-                </div>
-                <div className="text-[10px] font-bold text-emerald-700 font-mono">
-                  {cashBills.length} {isTamil ? 'ரொக்க பில்கள்' : 'cash bills'}
-                </div>
-              </div>
-            </div>
-
-            {/* Sub-breakdown: GPay and Credit Collections with Staff */}
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <div className="p-2 bg-blue-50/80 border border-blue-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-black text-blue-900">{isTamil ? 'GPay வசூல்' : 'GPay Collected'}</div>
-                  <div className="text-[9px] font-bold text-blue-700">{gpayBills.length} {isTamil ? 'பில்கள்' : 'bills'}</div>
-                </div>
-                <div className="font-mono font-black text-sm sm:text-base text-blue-900">
-                  {formatIndianCurrency(totalGPayCollected)}
-                </div>
-              </div>
-
-              <div className="p-2 bg-amber-50/80 border border-amber-200 rounded-lg flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-black text-amber-900">{isTamil ? 'கடன் தொகை' : 'Credit Total'}</div>
-                  <div className="text-[9px] font-bold text-amber-700">{creditBills.length} {isTamil ? 'பில்கள்' : 'bills'}</div>
-                </div>
-                <div className="font-mono font-black text-sm sm:text-base text-amber-900">
-                  {formatIndianCurrency(totalCreditOutstanding)}
                 </div>
               </div>
             </div>

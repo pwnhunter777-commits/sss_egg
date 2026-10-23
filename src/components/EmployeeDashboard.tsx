@@ -172,7 +172,10 @@ export const EmployeeDashboard: React.FC<Props> = ({
     ? Math.max(0, Math.round(Number(customAmountStr)))
     : calculatedTotal;
 
-  const remainingStock = todayStock?.remainingStock ?? 0;
+  const openingStock = todayStock?.openingStock ?? 0;
+  const totalEggsSold = bills.reduce((sum, b) => sum + (b.eggQuantity || 0), 0);
+  // Live remaining stock: strictly reduces as employee sells one by one
+  const remainingStock = Math.max(0, openingStock - totalEggsSold);
   const isStockInsufficient = totalEggs > 0 && totalEggs > remainingStock;
 
   // Quick quantity buttons in Trays (1, 2, 3, 5, 10, 15, 20, 25, 50, 100)

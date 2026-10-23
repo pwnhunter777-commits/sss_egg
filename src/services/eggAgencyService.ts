@@ -400,7 +400,18 @@ export const EggAgencyService = {
     };
 
     // 3. Deduct stock locally immediately so offline bills don't oversell!
-    const updatedStock = deductLocalStock(date, eggQuantity);
+    let updatedStock = deductLocalStock(date, eggQuantity);
+    if (!updatedStock) {
+      const newSold = (currentStock.eggsSold || 0) + eggQuantity;
+      const newRemaining = Math.max(0, (currentStock.openingStock || 0) - newSold);
+      updatedStock = {
+        ...currentStock,
+        eggsSold: newSold,
+        remainingStock: newRemaining,
+        updatedAt: new Date().toISOString(),
+      };
+      setLocalDailyStock(updatedStock);
+    }
     saveLocalBill(newBill);
 
     // 4. Try syncing to Firestore and creating owner notification
@@ -410,10 +421,8 @@ export const EggAgencyService = {
         syncStatus: 'synced',
       });
 
-      // Update remote stock if we have updated stock
-      if (updatedStock) {
-        await setDoc(doc(db, 'daily_stock', date), updatedStock, { merge: true });
-      }
+      // Update remote stock immediately
+      await setDoc(doc(db, 'daily_stock', date), updatedStock, { merge: true });
 
       // Create owner notification in Firestore
       const notifId = `notif_${billId}`;
