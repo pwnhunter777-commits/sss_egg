@@ -666,21 +666,26 @@ export const OwnerDashboard: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Grid 3 Columns: EGGS SOLD, TOTAL BILLS, PROFIT */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+            {/* Grid: EGGS SOLD, TOTAL BILLS, and TODAY'S PROFIT (BIG AT THE END) */}
+            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               {/* EGGS SOLD */}
-              <div className="bg-white rounded-2xl p-3 sm:p-3.5 border-2 border-slate-300 shadow-sm">
+              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border-2 border-slate-300 shadow-sm flex flex-col justify-between">
                 <div className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide truncate">
                   {t('eggsSold')}
                 </div>
                 <div className="text-xl sm:text-2xl font-black text-slate-950 font-mono mt-1.5 leading-tight flex items-baseline gap-1">
                   <span>{Math.floor(totalEggsSold / 30)}</span>
-                  <span className="text-xs sm:text-sm font-black text-blue-700">{isTamil ? 'தாரா' : 'T'}</span>
+                  <span className="text-xs sm:text-sm font-black text-blue-700">{isTamil ? 'தாரா' : 'Trays'}</span>
+                  {totalEggsSold % 30 > 0 && (
+                    <span className="text-xs font-black text-slate-500">
+                      (+{totalEggsSold % 30})
+                    </span>
+                  )}
                 </div>
               </div>
 
               {/* TOTAL BILLS */}
-              <div className="bg-white rounded-2xl p-3 sm:p-3.5 border-2 border-slate-300 shadow-sm">
+              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border-2 border-slate-300 shadow-sm flex flex-col justify-between">
                 <div className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wide truncate">
                   {t('totalBills')}
                 </div>
@@ -689,13 +694,25 @@ export const OwnerDashboard: React.FC<Props> = ({
                 </div>
               </div>
 
-              {/* TODAY'S PROFIT */}
-              <div className="bg-emerald-50 rounded-2xl p-3 sm:p-3.5 border-2 border-emerald-300 shadow-sm">
-                <div className="text-xs sm:text-sm font-black text-emerald-900 uppercase tracking-wide truncate">
-                  {t('profit')}
+              {/* TODAY'S PROFIT - BIG IN SIZE AT THE END */}
+              <div className="col-span-2 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 text-white rounded-2xl p-4 sm:p-5 border-2 border-emerald-500 shadow-md shadow-emerald-700/20 relative overflow-hidden flex items-center justify-between">
+                <div>
+                  <div className="text-xs sm:text-sm font-black text-emerald-100 uppercase tracking-wider flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-emerald-300 shrink-0" />
+                    <span>{t('profit')}</span>
+                  </div>
+                  <div className="text-2xl sm:text-4xl font-black mt-1 font-mono tracking-tight text-white drop-shadow-xs">
+                    {formatIndianCurrency(totalProfit)}
+                  </div>
+                  <div className="text-[11px] sm:text-xs font-bold text-emerald-200 mt-0.5">
+                    {isTamil ? 'இன்றைய நிகர லாபம் (Net Profit)' : "Today's Net Profit"}
+                  </div>
                 </div>
-                <div className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono mt-1.5 leading-tight truncate">
-                  {formatIndianCurrency(totalProfit)}
+
+                <div className="text-right shrink-0">
+                  <span className="text-xs sm:text-sm bg-black/25 px-3 py-1.5 rounded-xl text-emerald-100 font-black border border-emerald-400/30">
+                    {totalProfit > 0 ? (isTamil ? 'லாபம்' : 'Profit') : '₹0'}
+                  </span>
                 </div>
               </div>
             </div>
